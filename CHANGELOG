@@ -1,0 +1,7 @@
+Features:
+- Added "coyotelib:forceAllowVillagerGriefing" gamerule
+- Made CoyoteLib debug overlay configurable via config file
+- Added "Midair Jumps", "Player", "Vital Parameters", and "Potion Effects" debug components
+- Added automatic update checking url, fixed issue tracker url
+Bug Fixes:
+- Fixed log warnings for object holders without matching registry entries for debug components

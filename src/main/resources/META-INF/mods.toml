@@ -1,0 +1,32 @@
+modLoader="javafml"
+loaderVersion="[35,)"
+issueTrackerURL="https://github.com/QbDesu/MovementPlus/issues"
+license="Unlicense"
+
+[[mods]]
+modId="terrarian_trinkets"
+version="${file.jarVersion}"
+displayName="Terrarian Trinkets"
+updateJSONURL="https://gist.githubusercontent.com/QbDesu/22a14ea04a63b0b1fe1484c46fb6786a/raw/terrarian_trinkets_update.json"
+displayURL="https://www.curseforge.com/minecraft/mc-mods/terrarian_trinkets"
+logoFile="terrarian_trinkets.png"
+credits="Thanks to the Forge Team, the Forge Discord Channel, and the MMD Discord Channel."
+
+authors="Qb"
+description='''
+Ever wanted to have Terraria-like trinkets in Minecraft? Now you can!
+'''
+
+[[dependencies.terrarian_trinkets]]
+modId="forge"
+mandatory=true
+versionRange="[35,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.terrarian_trinkets]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.18.1,1.19)"
+ordering="NONE"
+side="BOTH"
