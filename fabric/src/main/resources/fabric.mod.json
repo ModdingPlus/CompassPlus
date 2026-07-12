@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "compass_plus",
+  "version": "${version}",
+  "name": "Compass Plus",
+  "description": "A fancy HUD for your compass.",
+  "authors": [
+    "Qb"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/compass_plus",
+    "sources": "https://github.com/ModdingPlus/CompassPlus",
+    "issues": "https://github.com/ModdingPlus/CompassPlus/issues"
+  },
+  "license": "Unlicense",
+  "icon": "assets/compass_plus/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "moe.qbyte.compass_plus.fabric.client.CompassPlusFabricClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "=1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

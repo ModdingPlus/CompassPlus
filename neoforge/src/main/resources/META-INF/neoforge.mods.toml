@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+issueTrackerURL = "https://github.com/ModdingPlus/CompassPlus/issues"
+license = "Unlicense"
+
+[[mods]]
+modId = "compass_plus"
+version = "${version}"
+displayName = "Compass Plus"
+displayURL = "https://modrinth.com/mod/compass_plus"
+authors = "Qb"
+description = '''
+A fancy HUD for your compass.
+'''
+logoFile = "assets/compass_plus/logo.png"
+
+[[dependencies.compass_plus]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.compass_plus]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "CLIENT"
