@@ -65,3 +65,63 @@ subprojects {
         }
     }
 }
+
+// Uploads the release jars to CurseForge and Modrinth: `./gradlew publishMods`.
+// Expects CURSEFORGE_TOKEN / MODRINTH_TOKEN in the environment, falling back to
+// gradle properties (e.g. from ~/.gradle/gradle.properties). Set the gradle
+// property `publishDryRun` (-PpublishDryRun) to test without uploading.
+publishMods {
+    changelog = file('CHANGELOG.md').text
+    type = STABLE
+    dryRun = providers.gradleProperty('publishDryRun').isPresent()
+
+    def fabricJar = project(':fabric').tasks.named('remapJar').flatMap { it.archiveFile }
+    def neoforgeJar = project(':neoforge').tasks.named('remapJar').flatMap { it.archiveFile }
+
+    def cfOptions = curseforgeOptions {
+        accessToken = providers.environmentVariable('CURSEFORGE_TOKEN')
+                .orElse(providers.gradleProperty('CURSEFORGE_TOKEN'))
+        projectId = '1005106'
+        minecraftVersions.add(minecraft_version)
+        javaVersions.add(JavaVersion.VERSION_21)
+        clientRequired = true
+        serverRequired = false
+    }
+
+    def mrOptions = modrinthOptions {
+        accessToken = providers.environmentVariable('MODRINTH_TOKEN')
+                .orElse(providers.gradleProperty('MODRINTH_TOKEN'))
+        projectId = 'xI5eonVo' // compass_plus
+        minecraftVersions.add(minecraft_version)
+    }
+
+    curseforge('curseforgeFabric') {
+        from cfOptions
+        file = fabricJar
+        modLoaders.add('fabric')
+        displayName = "Compass Plus ${mod_version} [Fabric]"
+        requires 'fabric-api'
+    }
+
+    curseforge('curseforgeNeoForge') {
+        from cfOptions
+        file = neoforgeJar
+        modLoaders.add('neoforge')
+        displayName = "Compass Plus ${mod_version} [NeoForge]"
+    }
+
+    modrinth('modrinthFabric') {
+        from mrOptions
+        file = fabricJar
+        modLoaders.add('fabric')
+        displayName = "Compass Plus ${mod_version} [Fabric]"
+        requires 'fabric-api'
+    }
+
+    modrinth('modrinthNeoForge') {
+        from mrOptions
+        file = neoforgeJar
+        modLoaders.add('neoforge')
+        displayName = "Compass Plus ${mod_version} [NeoForge]"
+    }
+}
