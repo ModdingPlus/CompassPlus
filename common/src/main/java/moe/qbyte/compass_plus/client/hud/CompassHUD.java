@@ -28,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 
 import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public class CompassHUD {
     public static final int COMPASS_WIDTH = 220;
@@ -53,13 +54,22 @@ public class CompassHUD {
     public static final Sprite RUBY = new Sprite(GUI_TEXTURES, 13 * 16, 32, 15, 15);
     public static final Sprite DIAMOND = new Sprite(GUI_TEXTURES, 14 * 16, 32, 15, 15);
 
+    // Item-only checks; Inventory.contains(ItemStack) compares components since
+    // 1.20.5 and would no longer count lodestone-bound or renamed compasses.
+    private static final Predicate<ItemStack> IS_COMPASS = stack -> stack.is(Items.COMPASS);
+    private static final Predicate<ItemStack> IS_RECOVERY_COMPASS = stack -> stack.is(Items.RECOVERY_COMPASS);
+
     private final Minecraft minecraft = Minecraft.getInstance();
 
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         if (this.minecraft.player == null || this.minecraft.level == null)
             return;
+        // NeoForge's gui layers are skipped on F1 by vanilla's LayeredDraw; check
+        // explicitly so the Fabric render callback behaves the same way.
+        if (this.minecraft.options.hideGui)
+            return;
         Inventory inventory = this.player().getInventory();
-        if (!inventory.contains(Items.COMPASS.getDefaultInstance()) && !inventory.contains(Items.RECOVERY_COMPASS.getDefaultInstance()))
+        if (!inventory.contains(IS_COMPASS) && !inventory.contains(IS_RECOVERY_COMPASS))
             return;
         this.minecraft.getProfiler().push("compass");
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
@@ -161,7 +171,7 @@ public class CompassHUD {
         NonNullList<POI> pois = NonNullList.create();
 
         // If the player has a compass, add a POI for the world spawn
-        if (this.player().getInventory().contains(Items.COMPASS.getDefaultInstance())) {
+        if (this.player().getInventory().contains(IS_COMPASS)) {
             if (this.level().dimension().equals(Level.OVERWORLD)) {
                 pois.add(POI.from(this.level().getSharedSpawnPos(), CompassIcon.STAR, new Color(0.6f, 0.6f, 1f, 1f)));
             }
@@ -177,7 +187,7 @@ public class CompassHUD {
         }
 
         // If the player has a recovery compass, add a POI for the last death location
-        if (this.player().getInventory().contains(Items.RECOVERY_COMPASS.getDefaultInstance())) {
+        if (this.player().getInventory().contains(IS_RECOVERY_COMPASS)) {
             Optional<GlobalPos> deathPos = this.player().getLastDeathLocation();
             if (deathPos.isPresent()) {
                 if (deathPos.get().dimension().equals(this.level().dimension())) {
