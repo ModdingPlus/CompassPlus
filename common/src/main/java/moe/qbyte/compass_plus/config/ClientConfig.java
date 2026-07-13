@@ -56,13 +56,14 @@ public final class ClientConfig {
     }
 
     /** Which slots are searched for compasses. */
-    public record SlotSettings(boolean mainHand, boolean offHand, boolean inventory, boolean equipment) {}
+    public record SlotSettings(boolean mainHand, boolean offHand, boolean hotbar, boolean inventory,
+                               boolean equipment) {}
 
     public static class ClientConfigTemplate {
         static final ComponentSettings CARDINAL_DIRECTIONS_DEFAULTS = new ComponentSettings(false, true, true, true, Set.of());
         static final ComponentSettings WORLD_SPAWN_DEFAULTS = new ComponentSettings(false, true, false, false, Set.of());
         static final ComponentSettings DEATH_POSITION_DEFAULTS = new ComponentSettings(false, false, false, true, Set.of());
-        static final SlotSettings COMPASS_SLOTS_DEFAULTS = new SlotSettings(true, true, true, true);
+        static final SlotSettings COMPASS_SLOTS_DEFAULTS = new SlotSettings(true, true, true, true, true);
 
         public final ComponentTemplate cardinalDirections;
         public final ComponentTemplate worldSpawn;
@@ -125,19 +126,24 @@ public final class ClientConfig {
     public static class SlotsTemplate {
         public final ModConfigSpec.BooleanValue mainHand;
         public final ModConfigSpec.BooleanValue offHand;
+        public final ModConfigSpec.BooleanValue hotbar;
         public final ModConfigSpec.BooleanValue inventory;
         public final ModConfigSpec.BooleanValue equipment;
 
         SlotsTemplate(ModConfigSpec.Builder builder) {
             builder.push("compass_slots");
             mainHand = builder
-                    .comment("Search the main hand for compasses. The main hand is part of the main inventory; this toggle matters when \"inventory\" is disabled.")
+                    .comment("Search the main hand for compasses. The main hand is part of the hotbar; this toggle matters when \"hotbar\" and \"inventory\" are disabled.")
                     .translation(key("mainHand"))
                     .define("main_hand", true);
             offHand = builder
                     .comment("Search the off hand for compasses.")
                     .translation(key("offHand"))
                     .define("off_hand", true);
+            hotbar = builder
+                    .comment("Search the hotbar for compasses. The hotbar is part of the main inventory; this toggle matters when \"inventory\" is disabled.")
+                    .translation(key("hotbar"))
+                    .define("hotbar", true);
             inventory = builder
                     .comment("Search the whole main inventory (including the hotbar) for compasses.")
                     .translation(key("inventory"))
@@ -150,7 +156,7 @@ public final class ClientConfig {
         }
 
         SlotSettings snapshot() {
-            return new SlotSettings(mainHand.get(), offHand.get(), inventory.get(), equipment.get());
+            return new SlotSettings(mainHand.get(), offHand.get(), hotbar.get(), inventory.get(), equipment.get());
         }
     }
 

@@ -195,11 +195,13 @@ public class CompassHUD {
         Inventory inventory = this.player().getInventory();
         ClientConfig.SlotSettings slots = ClientConfig.compassSlots;
         List<ItemStack> stacks = new ArrayList<>();
+        // main hand is a subset of the hotbar, which is a subset of the main
+        // inventory; only the widest enabled group needs to be collected
         if (slots.inventory()) {
             stacks.addAll(inventory.items);
+        } else if (slots.hotbar()) {
+            stacks.addAll(inventory.items.subList(0, Inventory.getSelectionSize()));
         } else if (slots.mainHand()) {
-            // the main hand slot is part of the main inventory; only needed
-            // separately when the full inventory is not searched
             stacks.add(inventory.getSelected());
         }
         if (slots.offHand())

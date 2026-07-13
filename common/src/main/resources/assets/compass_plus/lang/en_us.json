@@ -11,6 +11,7 @@
   "text.compass_plus.config.customCompasses": "Custom Compasses",
   "text.compass_plus.config.mainHand": "Main Hand",
   "text.compass_plus.config.offHand": "Off Hand",
+  "text.compass_plus.config.hotbar": "Hotbar",
   "text.compass_plus.config.inventory": "Inventory",
   "text.compass_plus.config.equipment": "Equipment"
 }

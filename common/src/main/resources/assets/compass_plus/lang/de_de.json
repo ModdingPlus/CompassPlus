@@ -11,6 +11,7 @@
   "text.compass_plus.config.customCompasses": "Eigene Kompasse",
   "text.compass_plus.config.mainHand": "Haupthand",
   "text.compass_plus.config.offHand": "Zweithand",
+  "text.compass_plus.config.hotbar": "Schnellzugriffsleiste",
   "text.compass_plus.config.inventory": "Inventar",
   "text.compass_plus.config.equipment": "Ausrüstung"
 }
