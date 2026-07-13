@@ -19,12 +19,18 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CompassItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.LodestoneTracker;
+import net.minecraft.world.item.component.MapDecorations;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.saveddata.maps.MapDecorationType;
+import net.minecraft.world.level.saveddata.maps.MapDecorationTypes;
+import net.minecraft.world.level.saveddata.maps.MapId;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
@@ -62,6 +68,9 @@ public class CompassHUD {
     public static final Sprite RUBY = new Sprite(GUI_TEXTURES, 13 * 16, 32, 15, 15);
     public static final Sprite DIAMOND = new Sprite(GUI_TEXTURES, 14 * 16, 32, 15, 15);
 
+    private static final ResourceKey<MapDecorationType> RED_X_KEY =
+            MapDecorationTypes.RED_X.unwrapKey().orElseThrow();
+
     private final Minecraft minecraft = Minecraft.getInstance();
 
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -78,6 +87,8 @@ public class CompassHUD {
         List<ItemStack> searchedStacks = this.searchedStacks();
         EnumSet<CompassKind> presentKinds = EnumSet.noneOf(CompassKind.class);
         Set<ResourceLocation> searchedItems = new HashSet<>();
+        List<Vec2> treasureTargets = new ArrayList<>();
+        List<Vec2> explorerTargets = new ArrayList<>();
         for (ItemStack stack : searchedStacks) {
             if (stack.isEmpty())
                 continue;
@@ -88,6 +99,8 @@ public class CompassHUD {
             } else if (stack.is(Items.RECOVERY_COMPASS)) {
                 presentKinds.add(CompassKind.RECOVERY_COMPASS);
             } else {
+                if (stack.is(Items.FILLED_MAP))
+                    this.collectMapTargets(stack, treasureTargets, explorerTargets);
                 searchedItems.add(BuiltInRegistries.ITEM.getKey(stack.getItem()));
             }
         }
@@ -100,9 +113,18 @@ public class CompassHUD {
         if (ClientConfig.deathPosition.enabledFor(presentKinds, searchedItems))
             visibleComponents.add(HudComponent.DEATH_POSITION);
 
-        // Lodestone markers are inherent to their compasses (there is no data to
-        // show without one), so they keep the HUD visible on their own.
-        if (visibleComponents.isEmpty() && !presentKinds.contains(CompassKind.LODESTONE_COMPASS))
+        // Marker components are inherent to their items (there is no data to show
+        // without one); they are visible whenever their toggle is on and a source
+        // item is in a searched slot, and keep the HUD visible on their own.
+        Set<HudComponent> markers = ClientConfig.enabledMarkers;
+        if (markers.contains(HudComponent.LODESTONES) && presentKinds.contains(CompassKind.LODESTONE_COMPASS))
+            visibleComponents.add(HudComponent.LODESTONES);
+        if (markers.contains(HudComponent.TREASURE_MAPS) && !treasureTargets.isEmpty())
+            visibleComponents.add(HudComponent.TREASURE_MAPS);
+        if (markers.contains(HudComponent.EXPLORER_MAPS) && !explorerTargets.isEmpty())
+            visibleComponents.add(HudComponent.EXPLORER_MAPS);
+
+        if (visibleComponents.isEmpty())
             return;
 
         this.minecraft.getProfiler().push("compass");
@@ -142,7 +164,8 @@ public class CompassHUD {
             }
         }
 
-        NonNullList<POI> pointsOfInterest = this.getPointsOfInterest(visibleComponents, searchedStacks);
+        NonNullList<POI> pointsOfInterest = this.getPointsOfInterest(visibleComponents, searchedStacks,
+                treasureTargets, explorerTargets);
         pointsOfInterest.forEach(
                 poi -> {
                     double angle = this.getAngle(poi.pos(), partialTicks);
@@ -191,6 +214,37 @@ public class CompassHUD {
         return normalizedAngle((float) Math.toDegrees(angle));
     }
 
+    /**
+     * Collects the world positions of a map's target decorations. Vanilla writes
+     * them onto the item as the MAP_DECORATIONS component with world coordinates
+     * (see MapItemSavedData.addTargetDecoration); the red X of buried treasure
+     * maps counts as treasure, every other target as an explorer map target.
+     */
+    private void collectMapTargets(ItemStack stack, List<Vec2> treasureTargets, List<Vec2> explorerTargets) {
+        MapDecorations decorations = stack.getOrDefault(DataComponents.MAP_DECORATIONS, MapDecorations.EMPTY);
+        if (decorations.decorations().isEmpty())
+            return;
+        if (!this.mapDimensionMatches(stack))
+            return;
+        for (MapDecorations.Entry entry : decorations.decorations().values()) {
+            Vec2 target = new Vec2((float) entry.x(), (float) entry.z());
+            if (entry.type().is(RED_X_KEY))
+                treasureTargets.add(target);
+            else
+                explorerTargets.add(target);
+        }
+    }
+
+    private boolean mapDimensionMatches(ItemStack stack) {
+        MapId mapId = stack.get(DataComponents.MAP_ID);
+        MapItemSavedData mapData = mapId != null ? this.level().getMapData(mapId) : null;
+        if (mapData != null)
+            return mapData.dimension.equals(this.level().dimension());
+        // the map's saved data may not be synced for maps that were never held;
+        // vanilla treasure and explorer maps target the overworld
+        return this.level().dimension().equals(Level.OVERWORLD);
+    }
+
     /** Collects the stacks from the slots enabled in the compass_slots config section. */
     private List<ItemStack> searchedStacks() {
         Inventory inventory = this.player().getInventory();
@@ -225,7 +279,8 @@ public class CompassHUD {
     }
 
     public NonNullList<POI> getPointsOfInterest(Set<HudComponent> visibleComponents,
-                                                List<ItemStack> searchedStacks) {
+                                                List<ItemStack> searchedStacks,
+                                                List<Vec2> treasureTargets, List<Vec2> explorerTargets) {
         NonNullList<POI> pois = NonNullList.create();
 
         // World spawn POI
@@ -236,12 +291,24 @@ public class CompassHUD {
         }
 
         // For every lodestone compass in a searched slot, add a POI
-        for (ItemStack stack : searchedStacks) {
-            if (stack.getItem() instanceof CompassItem) {
-                CompassHUD.getLodestonePosition(this.level(), stack)
-                        .ifPresent(blockPos -> pois
-                                .add(POI.from(blockPos, CompassIcon.LODESTONE, new Color(1f, 0.6f, 0.6f, 1f))));
+        if (visibleComponents.contains(HudComponent.LODESTONES)) {
+            for (ItemStack stack : searchedStacks) {
+                if (stack.getItem() instanceof CompassItem) {
+                    CompassHUD.getLodestonePosition(this.level(), stack)
+                            .ifPresent(blockPos -> pois
+                                    .add(POI.from(blockPos, CompassIcon.LODESTONE, new Color(1f, 0.6f, 0.6f, 1f))));
+                }
             }
+        }
+
+        // Map target POIs (buried treasure and explorer maps)
+        if (visibleComponents.contains(HudComponent.TREASURE_MAPS)) {
+            for (Vec2 target : treasureTargets)
+                pois.add(new POI(target, CompassIcon.CROSS, new Color(0.9f, 0.25f, 0.25f, 1f)));
+        }
+        if (visibleComponents.contains(HudComponent.EXPLORER_MAPS)) {
+            for (Vec2 target : explorerTargets)
+                pois.add(new POI(target, CompassIcon.TRIANGLE, new Color(0.5f, 0.85f, 0.5f, 1f)));
         }
 
         // Last death POI

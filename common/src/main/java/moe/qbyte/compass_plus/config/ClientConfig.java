@@ -1,6 +1,7 @@
 package moe.qbyte.compass_plus.config;
 
 import moe.qbyte.compass_plus.CompassPlus;
+import moe.qbyte.compass_plus.client.hud.HudComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
@@ -31,6 +32,7 @@ public final class ClientConfig {
     public static ComponentSettings cardinalDirections = ClientConfigTemplate.CARDINAL_DIRECTIONS_DEFAULTS;
     public static ComponentSettings worldSpawn = ClientConfigTemplate.WORLD_SPAWN_DEFAULTS;
     public static ComponentSettings deathPosition = ClientConfigTemplate.DEATH_POSITION_DEFAULTS;
+    public static Set<HudComponent> enabledMarkers = ClientConfigTemplate.MARKERS_DEFAULTS;
     public static Set<CompassSlot> compassSlots = ClientConfigTemplate.COMPASS_SLOTS_DEFAULTS;
 
     private ClientConfig() {}
@@ -40,6 +42,7 @@ public final class ClientConfig {
         cardinalDirections = CLIENT.cardinalDirections.snapshot();
         worldSpawn = CLIENT.worldSpawn.snapshot();
         deathPosition = CLIENT.deathPosition.snapshot();
+        enabledMarkers = CLIENT.markers.snapshot();
         compassSlots = CLIENT.compassSlots.snapshot();
     }
 
@@ -60,11 +63,14 @@ public final class ClientConfig {
                 new ComponentSettings(false, EnumSet.of(CompassKind.COMPASS), Set.of());
         static final ComponentSettings DEATH_POSITION_DEFAULTS =
                 new ComponentSettings(false, EnumSet.of(CompassKind.RECOVERY_COMPASS), Set.of());
+        static final Set<HudComponent> MARKERS_DEFAULTS =
+                EnumSet.of(HudComponent.LODESTONES, HudComponent.TREASURE_MAPS, HudComponent.EXPLORER_MAPS);
         static final Set<CompassSlot> COMPASS_SLOTS_DEFAULTS = EnumSet.allOf(CompassSlot.class);
 
         public final ComponentTemplate cardinalDirections;
         public final ComponentTemplate worldSpawn;
         public final ComponentTemplate deathPosition;
+        public final MarkersTemplate markers;
         public final SlotsTemplate compassSlots;
 
         ClientConfigTemplate(ModConfigSpec.Builder builder) {
@@ -74,6 +80,7 @@ public final class ClientConfig {
                     "the world spawn marker (overworld only)", WORLD_SPAWN_DEFAULTS);
             deathPosition = new ComponentTemplate(builder, "death_position",
                     "the marker for your last death (same dimension only)", DEATH_POSITION_DEFAULTS);
+            markers = new MarkersTemplate(builder);
             compassSlots = new SlotsTemplate(builder);
         }
     }
@@ -124,6 +131,40 @@ public final class ClientConfig {
                             .map(ResourceLocation::tryParse)
                             .filter(Objects::nonNull)
                             .collect(Collectors.toUnmodifiableSet()));
+        }
+    }
+
+    public static class MarkersTemplate {
+        public final ModConfigSpec.BooleanValue lodestones;
+        public final ModConfigSpec.BooleanValue treasureMaps;
+        public final ModConfigSpec.BooleanValue explorerMaps;
+
+        MarkersTemplate(ModConfigSpec.Builder builder) {
+            builder.push("markers");
+            lodestones = builder
+                    .comment("Show markers for the targets of lodestone-bound compasses in searched slots.")
+                    .translation(key("lodestones"))
+                    .define("lodestones", true);
+            treasureMaps = builder
+                    .comment("Show markers for the red X of buried treasure maps in searched slots.")
+                    .translation(key("treasureMaps"))
+                    .define("treasure_maps", true);
+            explorerMaps = builder
+                    .comment("Show markers for the structure targets of explorer maps (woodland mansion, ocean monument, trial chambers) in searched slots.")
+                    .translation(key("explorerMaps"))
+                    .define("explorer_maps", true);
+            builder.pop();
+        }
+
+        Set<HudComponent> snapshot() {
+            EnumSet<HudComponent> markers = EnumSet.noneOf(HudComponent.class);
+            if (lodestones.get())
+                markers.add(HudComponent.LODESTONES);
+            if (treasureMaps.get())
+                markers.add(HudComponent.TREASURE_MAPS);
+            if (explorerMaps.get())
+                markers.add(HudComponent.EXPLORER_MAPS);
+            return markers;
         }
     }
 

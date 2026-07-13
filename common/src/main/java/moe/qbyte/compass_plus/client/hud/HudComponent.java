@@ -4,5 +4,8 @@ package moe.qbyte.compass_plus.client.hud;
 public enum HudComponent {
     CARDINAL_DIRECTIONS,
     WORLD_SPAWN,
-    DEATH_POSITION
+    DEATH_POSITION,
+    LODESTONES,
+    TREASURE_MAPS,
+    EXPLORER_MAPS
 }

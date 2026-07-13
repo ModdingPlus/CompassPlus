@@ -10,7 +10,6 @@ Available for Fabric and NeoForge.
 
 ## Planned Features
 
-* (maybe) show the direction of treasure maps in your inventory
 * compat with Quarks Compasses work Everywhere module
 * a simple API for other mods to add their own POIs to the compass HUD
 
