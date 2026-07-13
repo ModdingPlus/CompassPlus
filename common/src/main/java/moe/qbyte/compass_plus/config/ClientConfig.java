@@ -6,6 +6,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -30,7 +31,7 @@ public final class ClientConfig {
     public static ComponentSettings cardinalDirections = ClientConfigTemplate.CARDINAL_DIRECTIONS_DEFAULTS;
     public static ComponentSettings worldSpawn = ClientConfigTemplate.WORLD_SPAWN_DEFAULTS;
     public static ComponentSettings deathPosition = ClientConfigTemplate.DEATH_POSITION_DEFAULTS;
-    public static SlotSettings compassSlots = ClientConfigTemplate.COMPASS_SLOTS_DEFAULTS;
+    public static Set<CompassSlot> compassSlots = ClientConfigTemplate.COMPASS_SLOTS_DEFAULTS;
 
     private ClientConfig() {}
 
@@ -43,27 +44,23 @@ public final class ClientConfig {
     }
 
     /** Which compass kinds make a HUD component visible. */
-    public record ComponentSettings(boolean always, boolean compass, boolean lodestoneCompass,
-                                    boolean recoveryCompass, Set<ResourceLocation> customCompasses) {
-        public boolean enabledFor(boolean hasCompass, boolean hasLodestoneCompass,
-                                  boolean hasRecoveryCompass, Set<ResourceLocation> searchedItems) {
+    public record ComponentSettings(boolean always, Set<CompassKind> enabledKinds,
+                                    Set<ResourceLocation> customCompasses) {
+        public boolean enabledFor(Set<CompassKind> presentKinds, Set<ResourceLocation> searchedItems) {
             return this.always
-                    || (this.compass && hasCompass)
-                    || (this.lodestoneCompass && hasLodestoneCompass)
-                    || (this.recoveryCompass && hasRecoveryCompass)
+                    || !Collections.disjoint(this.enabledKinds, presentKinds)
                     || !Collections.disjoint(this.customCompasses, searchedItems);
         }
     }
 
-    /** Which slots are searched for compasses. */
-    public record SlotSettings(boolean mainHand, boolean offHand, boolean hotbar, boolean inventory,
-                               boolean equipment) {}
-
     public static class ClientConfigTemplate {
-        static final ComponentSettings CARDINAL_DIRECTIONS_DEFAULTS = new ComponentSettings(false, true, true, true, Set.of());
-        static final ComponentSettings WORLD_SPAWN_DEFAULTS = new ComponentSettings(false, true, false, false, Set.of());
-        static final ComponentSettings DEATH_POSITION_DEFAULTS = new ComponentSettings(false, false, false, true, Set.of());
-        static final SlotSettings COMPASS_SLOTS_DEFAULTS = new SlotSettings(true, true, true, true, true);
+        static final ComponentSettings CARDINAL_DIRECTIONS_DEFAULTS =
+                new ComponentSettings(false, EnumSet.allOf(CompassKind.class), Set.of());
+        static final ComponentSettings WORLD_SPAWN_DEFAULTS =
+                new ComponentSettings(false, EnumSet.of(CompassKind.COMPASS), Set.of());
+        static final ComponentSettings DEATH_POSITION_DEFAULTS =
+                new ComponentSettings(false, EnumSet.of(CompassKind.RECOVERY_COMPASS), Set.of());
+        static final Set<CompassSlot> COMPASS_SLOTS_DEFAULTS = EnumSet.allOf(CompassSlot.class);
 
         public final ComponentTemplate cardinalDirections;
         public final ComponentTemplate worldSpawn;
@@ -97,15 +94,15 @@ public final class ClientConfig {
             compass = builder
                     .comment("Show " + what + " while a regular compass is in a searched slot.")
                     .translation(key("compass"))
-                    .define("compass", defaults.compass());
+                    .define("compass", defaults.enabledKinds().contains(CompassKind.COMPASS));
             lodestoneCompass = builder
                     .comment("Show " + what + " while a lodestone-bound compass is in a searched slot.")
                     .translation(key("lodestoneCompass"))
-                    .define("lodestone_compass", defaults.lodestoneCompass());
+                    .define("lodestone_compass", defaults.enabledKinds().contains(CompassKind.LODESTONE_COMPASS));
             recoveryCompass = builder
                     .comment("Show " + what + " while a recovery compass is in a searched slot.")
                     .translation(key("recoveryCompass"))
-                    .define("recovery_compass", defaults.recoveryCompass());
+                    .define("recovery_compass", defaults.enabledKinds().contains(CompassKind.RECOVERY_COMPASS));
             customCompasses = builder
                     .comment("Item ids that also enable " + what + " from a searched slot, e.g. [\"somemod:gps\"].")
                     .translation(key("customCompasses"))
@@ -115,7 +112,14 @@ public final class ClientConfig {
         }
 
         ComponentSettings snapshot() {
-            return new ComponentSettings(always.get(), compass.get(), lodestoneCompass.get(), recoveryCompass.get(),
+            EnumSet<CompassKind> kinds = EnumSet.noneOf(CompassKind.class);
+            if (compass.get())
+                kinds.add(CompassKind.COMPASS);
+            if (lodestoneCompass.get())
+                kinds.add(CompassKind.LODESTONE_COMPASS);
+            if (recoveryCompass.get())
+                kinds.add(CompassKind.RECOVERY_COMPASS);
+            return new ComponentSettings(always.get(), kinds,
                     customCompasses.get().stream()
                             .map(ResourceLocation::tryParse)
                             .filter(Objects::nonNull)
@@ -155,8 +159,19 @@ public final class ClientConfig {
             builder.pop();
         }
 
-        SlotSettings snapshot() {
-            return new SlotSettings(mainHand.get(), offHand.get(), hotbar.get(), inventory.get(), equipment.get());
+        Set<CompassSlot> snapshot() {
+            EnumSet<CompassSlot> slots = EnumSet.noneOf(CompassSlot.class);
+            if (mainHand.get())
+                slots.add(CompassSlot.MAIN_HAND);
+            if (offHand.get())
+                slots.add(CompassSlot.OFF_HAND);
+            if (hotbar.get())
+                slots.add(CompassSlot.HOTBAR);
+            if (inventory.get())
+                slots.add(CompassSlot.INVENTORY);
+            if (equipment.get())
+                slots.add(CompassSlot.EQUIPMENT);
+            return slots;
         }
     }
 

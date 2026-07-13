@@ -6,6 +6,8 @@ import moe.qbyte.compass_plus.api.Color;
 import moe.qbyte.compass_plus.api.CompassIcon;
 import moe.qbyte.compass_plus.api.POI;
 import moe.qbyte.compass_plus.config.ClientConfig;
+import moe.qbyte.compass_plus.config.CompassKind;
+import moe.qbyte.compass_plus.config.CompassSlot;
 import moe.qbyte.compass_plus.utils.gui.Sprite;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -30,6 +32,7 @@ import net.minecraft.world.entity.player.Inventory;
 
 import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -73,35 +76,33 @@ public class CompassHUD {
         // checks stay item-only (Inventory.contains(ItemStack) compares components
         // since 1.20.5); a compass with a lodestone tracker component is its own kind.
         List<ItemStack> searchedStacks = this.searchedStacks();
-        boolean hasCompass = false;
-        boolean hasLodestoneCompass = false;
-        boolean hasRecoveryCompass = false;
+        EnumSet<CompassKind> presentKinds = EnumSet.noneOf(CompassKind.class);
         Set<ResourceLocation> searchedItems = new HashSet<>();
         for (ItemStack stack : searchedStacks) {
             if (stack.isEmpty())
                 continue;
             if (stack.is(Items.COMPASS)) {
-                if (stack.has(DataComponents.LODESTONE_TRACKER))
-                    hasLodestoneCompass = true;
-                else
-                    hasCompass = true;
+                presentKinds.add(stack.has(DataComponents.LODESTONE_TRACKER)
+                        ? CompassKind.LODESTONE_COMPASS
+                        : CompassKind.COMPASS);
             } else if (stack.is(Items.RECOVERY_COMPASS)) {
-                hasRecoveryCompass = true;
+                presentKinds.add(CompassKind.RECOVERY_COMPASS);
             } else {
                 searchedItems.add(BuiltInRegistries.ITEM.getKey(stack.getItem()));
             }
         }
 
-        boolean showCardinalDirections = ClientConfig.cardinalDirections
-                .enabledFor(hasCompass, hasLodestoneCompass, hasRecoveryCompass, searchedItems);
-        boolean showWorldSpawn = ClientConfig.worldSpawn
-                .enabledFor(hasCompass, hasLodestoneCompass, hasRecoveryCompass, searchedItems);
-        boolean showDeathPosition = ClientConfig.deathPosition
-                .enabledFor(hasCompass, hasLodestoneCompass, hasRecoveryCompass, searchedItems);
+        EnumSet<HudComponent> visibleComponents = EnumSet.noneOf(HudComponent.class);
+        if (ClientConfig.cardinalDirections.enabledFor(presentKinds, searchedItems))
+            visibleComponents.add(HudComponent.CARDINAL_DIRECTIONS);
+        if (ClientConfig.worldSpawn.enabledFor(presentKinds, searchedItems))
+            visibleComponents.add(HudComponent.WORLD_SPAWN);
+        if (ClientConfig.deathPosition.enabledFor(presentKinds, searchedItems))
+            visibleComponents.add(HudComponent.DEATH_POSITION);
 
         // Lodestone markers are inherent to their compasses (there is no data to
         // show without one), so they keep the HUD visible on their own.
-        if (!showCardinalDirections && !showWorldSpawn && !showDeathPosition && !hasLodestoneCompass)
+        if (visibleComponents.isEmpty() && !presentKinds.contains(CompassKind.LODESTONE_COMPASS))
             return;
 
         this.minecraft.getProfiler().push("compass");
@@ -116,7 +117,7 @@ public class CompassHUD {
         LINE.blendBlit(guiGraphics, (int) Math.ceil(midX - (COMPASS_WIDTH / 2f)), 2);
         TICK.blendBlit(guiGraphics, (int) midX - 7, 0);
 
-        if (showCardinalDirections) {
+        if (visibleComponents.contains(HudComponent.CARDINAL_DIRECTIONS)) {
             // south marker
             float south = normalizedAngle(yRot);
             if (Math.abs(south) <= COMPASS_WIDTH / 2d)
@@ -141,7 +142,7 @@ public class CompassHUD {
             }
         }
 
-        NonNullList<POI> pointsOfInterest = this.getPointsOfInterest(showWorldSpawn, showDeathPosition, searchedStacks);
+        NonNullList<POI> pointsOfInterest = this.getPointsOfInterest(visibleComponents, searchedStacks);
         pointsOfInterest.forEach(
                 poi -> {
                     double angle = this.getAngle(poi.pos(), partialTicks);
@@ -193,20 +194,20 @@ public class CompassHUD {
     /** Collects the stacks from the slots enabled in the compass_slots config section. */
     private List<ItemStack> searchedStacks() {
         Inventory inventory = this.player().getInventory();
-        ClientConfig.SlotSettings slots = ClientConfig.compassSlots;
+        Set<CompassSlot> slots = ClientConfig.compassSlots;
         List<ItemStack> stacks = new ArrayList<>();
         // main hand is a subset of the hotbar, which is a subset of the main
         // inventory; only the widest enabled group needs to be collected
-        if (slots.inventory()) {
+        if (slots.contains(CompassSlot.INVENTORY)) {
             stacks.addAll(inventory.items);
-        } else if (slots.hotbar()) {
+        } else if (slots.contains(CompassSlot.HOTBAR)) {
             stacks.addAll(inventory.items.subList(0, Inventory.getSelectionSize()));
-        } else if (slots.mainHand()) {
+        } else if (slots.contains(CompassSlot.MAIN_HAND)) {
             stacks.add(inventory.getSelected());
         }
-        if (slots.offHand())
+        if (slots.contains(CompassSlot.OFF_HAND))
             stacks.addAll(inventory.offhand);
-        if (slots.equipment())
+        if (slots.contains(CompassSlot.EQUIPMENT))
             stacks.addAll(inventory.armor);
         return stacks;
     }
@@ -223,12 +224,12 @@ public class CompassHUD {
         return this.minecraft.level;
     }
 
-    public NonNullList<POI> getPointsOfInterest(boolean showWorldSpawn, boolean showDeathPosition,
+    public NonNullList<POI> getPointsOfInterest(Set<HudComponent> visibleComponents,
                                                 List<ItemStack> searchedStacks) {
         NonNullList<POI> pois = NonNullList.create();
 
         // World spawn POI
-        if (showWorldSpawn) {
+        if (visibleComponents.contains(HudComponent.WORLD_SPAWN)) {
             if (this.level().dimension().equals(Level.OVERWORLD)) {
                 pois.add(POI.from(this.level().getSharedSpawnPos(), CompassIcon.STAR, new Color(0.6f, 0.6f, 1f, 1f)));
             }
@@ -244,7 +245,7 @@ public class CompassHUD {
         }
 
         // Last death POI
-        if (showDeathPosition) {
+        if (visibleComponents.contains(HudComponent.DEATH_POSITION)) {
             Optional<GlobalPos> deathPos = this.player().getLastDeathLocation();
             if (deathPos.isPresent()) {
                 if (deathPos.get().dimension().equals(this.level().dimension())) {
