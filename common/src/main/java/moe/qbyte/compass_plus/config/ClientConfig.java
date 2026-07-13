@@ -5,6 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -29,7 +30,7 @@ public final class ClientConfig {
     public static ComponentSettings cardinalDirections = ClientConfigTemplate.CARDINAL_DIRECTIONS_DEFAULTS;
     public static ComponentSettings worldSpawn = ClientConfigTemplate.WORLD_SPAWN_DEFAULTS;
     public static ComponentSettings deathPosition = ClientConfigTemplate.DEATH_POSITION_DEFAULTS;
-    public static Set<ResourceLocation> customCompassItems = Set.of();
+    public static SlotSettings compassSlots = ClientConfigTemplate.COMPASS_SLOTS_DEFAULTS;
 
     private ClientConfig() {}
 
@@ -38,34 +39,35 @@ public final class ClientConfig {
         cardinalDirections = CLIENT.cardinalDirections.snapshot();
         worldSpawn = CLIENT.worldSpawn.snapshot();
         deathPosition = CLIENT.deathPosition.snapshot();
-        customCompassItems = CLIENT.customCompassItems.get().stream()
-                .map(ResourceLocation::tryParse)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toUnmodifiableSet());
+        compassSlots = CLIENT.compassSlots.snapshot();
     }
 
     /** Which compass kinds make a HUD component visible. */
     public record ComponentSettings(boolean always, boolean compass, boolean lodestoneCompass,
-                                    boolean recoveryCompass, boolean customCompasses) {
+                                    boolean recoveryCompass, Set<ResourceLocation> customCompasses) {
         public boolean enabledFor(boolean hasCompass, boolean hasLodestoneCompass,
-                                  boolean hasRecoveryCompass, boolean hasCustomCompass) {
+                                  boolean hasRecoveryCompass, Set<ResourceLocation> searchedItems) {
             return this.always
                     || (this.compass && hasCompass)
                     || (this.lodestoneCompass && hasLodestoneCompass)
                     || (this.recoveryCompass && hasRecoveryCompass)
-                    || (this.customCompasses && hasCustomCompass);
+                    || !Collections.disjoint(this.customCompasses, searchedItems);
         }
     }
 
+    /** Which slots are searched for compasses. */
+    public record SlotSettings(boolean mainHand, boolean offHand, boolean inventory, boolean equipment) {}
+
     public static class ClientConfigTemplate {
-        static final ComponentSettings CARDINAL_DIRECTIONS_DEFAULTS = new ComponentSettings(false, true, true, true, true);
-        static final ComponentSettings WORLD_SPAWN_DEFAULTS = new ComponentSettings(false, true, false, false, false);
-        static final ComponentSettings DEATH_POSITION_DEFAULTS = new ComponentSettings(false, false, false, true, false);
+        static final ComponentSettings CARDINAL_DIRECTIONS_DEFAULTS = new ComponentSettings(false, true, true, true, Set.of());
+        static final ComponentSettings WORLD_SPAWN_DEFAULTS = new ComponentSettings(false, true, false, false, Set.of());
+        static final ComponentSettings DEATH_POSITION_DEFAULTS = new ComponentSettings(false, false, false, true, Set.of());
+        static final SlotSettings COMPASS_SLOTS_DEFAULTS = new SlotSettings(true, true, true, true);
 
         public final ComponentTemplate cardinalDirections;
         public final ComponentTemplate worldSpawn;
         public final ComponentTemplate deathPosition;
-        public final ModConfigSpec.ConfigValue<List<? extends String>> customCompassItems;
+        public final SlotsTemplate compassSlots;
 
         ClientConfigTemplate(ModConfigSpec.Builder builder) {
             cardinalDirections = new ComponentTemplate(builder, "cardinal_directions",
@@ -74,14 +76,7 @@ public final class ClientConfig {
                     "the world spawn marker (overworld only)", WORLD_SPAWN_DEFAULTS);
             deathPosition = new ComponentTemplate(builder, "death_position",
                     "the marker for your last death (same dimension only)", DEATH_POSITION_DEFAULTS);
-
-            builder.push("custom_compasses");
-            customCompassItems = builder
-                    .comment("Item ids that count as the \"custom compasses\" kind in the sections above, e.g. [\"somemod:gps\"].")
-                    .translation("text." + CompassPlus.MODID + ".config.customCompassItems")
-                    .defineListAllowEmpty("items", List.of(), () -> "",
-                            o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
-            builder.pop();
+            compassSlots = new SlotsTemplate(builder);
         }
     }
 
@@ -90,7 +85,7 @@ public final class ClientConfig {
         public final ModConfigSpec.BooleanValue compass;
         public final ModConfigSpec.BooleanValue lodestoneCompass;
         public final ModConfigSpec.BooleanValue recoveryCompass;
-        public final ModConfigSpec.BooleanValue customCompasses;
+        public final ModConfigSpec.ConfigValue<List<? extends String>> customCompasses;
 
         ComponentTemplate(ModConfigSpec.Builder builder, String section, String what, ComponentSettings defaults) {
             builder.push(section);
@@ -99,31 +94,67 @@ public final class ClientConfig {
                     .translation(key("always"))
                     .define("always", defaults.always());
             compass = builder
-                    .comment("Show " + what + " while a regular compass is in your inventory.")
+                    .comment("Show " + what + " while a regular compass is in a searched slot.")
                     .translation(key("compass"))
                     .define("compass", defaults.compass());
             lodestoneCompass = builder
-                    .comment("Show " + what + " while a lodestone-bound compass is in your inventory.")
+                    .comment("Show " + what + " while a lodestone-bound compass is in a searched slot.")
                     .translation(key("lodestoneCompass"))
                     .define("lodestone_compass", defaults.lodestoneCompass());
             recoveryCompass = builder
-                    .comment("Show " + what + " while a recovery compass is in your inventory.")
+                    .comment("Show " + what + " while a recovery compass is in a searched slot.")
                     .translation(key("recoveryCompass"))
                     .define("recovery_compass", defaults.recoveryCompass());
             customCompasses = builder
-                    .comment("Show " + what + " while one of the configured custom compass items is in your inventory.")
+                    .comment("Item ids that also enable " + what + " from a searched slot, e.g. [\"somemod:gps\"].")
                     .translation(key("customCompasses"))
-                    .define("custom_compasses", defaults.customCompasses());
+                    .defineListAllowEmpty("custom_compasses", List.of(), () -> "",
+                            o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
             builder.pop();
         }
 
-        private static String key(String name) {
-            return "text." + CompassPlus.MODID + ".config." + name;
+        ComponentSettings snapshot() {
+            return new ComponentSettings(always.get(), compass.get(), lodestoneCompass.get(), recoveryCompass.get(),
+                    customCompasses.get().stream()
+                            .map(ResourceLocation::tryParse)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toUnmodifiableSet()));
+        }
+    }
+
+    public static class SlotsTemplate {
+        public final ModConfigSpec.BooleanValue mainHand;
+        public final ModConfigSpec.BooleanValue offHand;
+        public final ModConfigSpec.BooleanValue inventory;
+        public final ModConfigSpec.BooleanValue equipment;
+
+        SlotsTemplate(ModConfigSpec.Builder builder) {
+            builder.push("compass_slots");
+            mainHand = builder
+                    .comment("Search the main hand for compasses. The main hand is part of the main inventory; this toggle matters when \"inventory\" is disabled.")
+                    .translation(key("mainHand"))
+                    .define("main_hand", true);
+            offHand = builder
+                    .comment("Search the off hand for compasses.")
+                    .translation(key("offHand"))
+                    .define("off_hand", true);
+            inventory = builder
+                    .comment("Search the whole main inventory (including the hotbar) for compasses.")
+                    .translation(key("inventory"))
+                    .define("inventory", true);
+            equipment = builder
+                    .comment("Search the armor slots for compasses, e.g. custom compasses built into helmets.")
+                    .translation(key("equipment"))
+                    .define("equipment", true);
+            builder.pop();
         }
 
-        ComponentSettings snapshot() {
-            return new ComponentSettings(always.get(), compass.get(), lodestoneCompass.get(),
-                    recoveryCompass.get(), customCompasses.get());
+        SlotSettings snapshot() {
+            return new SlotSettings(mainHand.get(), offHand.get(), inventory.get(), equipment.get());
         }
+    }
+
+    private static String key(String name) {
+        return "text." + CompassPlus.MODID + ".config." + name;
     }
 }

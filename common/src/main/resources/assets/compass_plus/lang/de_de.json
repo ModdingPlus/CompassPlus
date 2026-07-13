@@ -3,11 +3,14 @@
   "compass_plus.configuration.cardinal_directions": "Himmelsrichtungen",
   "compass_plus.configuration.world_spawn": "Weltspawn",
   "compass_plus.configuration.death_position": "Todesposition",
-  "compass_plus.configuration.custom_compasses": "Eigene Kompasse",
+  "compass_plus.configuration.compass_slots": "Kompass-Slots",
   "text.compass_plus.config.always": "Immer anzeigen",
   "text.compass_plus.config.compass": "Durch Kompass aktiviert",
   "text.compass_plus.config.lodestoneCompass": "Durch Leitstein-Kompass aktiviert",
   "text.compass_plus.config.recoveryCompass": "Durch Bergungskompass aktiviert",
-  "text.compass_plus.config.customCompasses": "Durch eigene Kompasse aktiviert",
-  "text.compass_plus.config.customCompassItems": "Eigene Kompass-Items"
+  "text.compass_plus.config.customCompasses": "Eigene Kompasse",
+  "text.compass_plus.config.mainHand": "Haupthand",
+  "text.compass_plus.config.offHand": "Zweithand",
+  "text.compass_plus.config.inventory": "Inventar",
+  "text.compass_plus.config.equipment": "Ausrüstung"
 }

@@ -11,6 +11,7 @@ Full port to Minecraft 1.21.1, now available for Fabric and NeoForge.
 - New client settings (config screen in the mod list; via Mod Menu on Fabric):
   each HUD component (cardinal directions, world spawn marker, last death
   marker) can be shown always or enabled by specific compass kinds (regular,
-  lodestone-bound, recovery, or a configurable list of custom compass items
-  from other mods).
+  lodestone-bound, recovery, or a per-component list of custom compass items
+  from other mods), and the slots searched for compasses are configurable
+  (main hand, off hand, inventory, equipment).
 - The Fabric version now requires Forge Config API Port.
