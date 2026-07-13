@@ -12,10 +12,6 @@ Available for Fabric and NeoForge.
 
 * (maybe) show the direction of treasure maps in your inventory
 * compat with Quarks Compasses work Everywhere module
-* basic settings
-  * always show the overlay with cardinal directions, but not the world spawn
-  * always show the world spawn even if no compasses are in your inventory
-  * always show player spawn even if no recovery compasses are in your inventory
 * a simple API for other mods to add their own POIs to the compass HUD
 
 ## License

@@ -29,6 +29,14 @@ subprojects {
             name = 'ParchmentMC'
             url = 'https://maven.parchmentmc.org'
         }
+        maven {
+            name = 'Fuzs Mod Resources'
+            url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
+        }
+        maven {
+            name = 'TerraformersMC'
+            url = 'https://maven.terraformersmc.com/releases'
+        }
     }
 
     loom {
@@ -100,7 +108,8 @@ publishMods {
         file = fabricJar
         modLoaders.add('fabric')
         displayName = "Compass Plus ${mod_version} [Fabric]"
-        requires 'fabric-api'
+        requires 'fabric-api', 'forge-config-api-port'
+        optional 'modmenu'
     }
 
     curseforge('curseforgeNeoForge') {
@@ -115,7 +124,8 @@ publishMods {
         file = fabricJar
         modLoaders.add('fabric')
         displayName = "Compass Plus ${mod_version} [Fabric]"
-        requires 'fabric-api'
+        requires 'fabric-api', 'forge-config-api-port'
+        optional 'modmenu'
     }
 
     modrinth('modrinthNeoForge') {

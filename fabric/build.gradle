@@ -30,6 +30,13 @@ dependencies {
     // Fabric API, needed for the HUD render callback.
     modImplementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
 
+    // Forge Config API Port, runtime provider of the NeoForge config API on Fabric
+    modApi "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:$rootProject.forge_config_api_port_version"
+
+    // dev-runtime QoL: mod list + config screen access (FCAP hooks its ported
+    // NeoForge ConfigurationScreen into Mod Menu)
+    modLocalRuntime "com.terraformersmc:modmenu:$rootProject.mod_menu_version"
+
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 }

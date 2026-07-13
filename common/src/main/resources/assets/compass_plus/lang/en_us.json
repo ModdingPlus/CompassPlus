@@ -1,0 +1,7 @@
+{
+  "compass_plus.configuration.title": "Compass Plus Configuration",
+  "compass_plus.configuration.general": "General",
+  "text.compass_plus.config.alwaysShowHud": "Always Show HUD",
+  "text.compass_plus.config.alwaysShowWorldSpawn": "Always Show World Spawn",
+  "text.compass_plus.config.alwaysShowDeathPosition": "Always Show Death Position"
+}

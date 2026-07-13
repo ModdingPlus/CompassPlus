@@ -5,6 +5,7 @@ import moe.qbyte.compass_plus.CompassPlus;
 import moe.qbyte.compass_plus.api.Color;
 import moe.qbyte.compass_plus.api.CompassIcon;
 import moe.qbyte.compass_plus.api.POI;
+import moe.qbyte.compass_plus.config.ClientConfig;
 import moe.qbyte.compass_plus.utils.gui.Sprite;
 import moe.qbyte.compass_plus.utils.item.InventoryUtil;
 import net.minecraft.client.DeltaTracker;
@@ -69,7 +70,9 @@ public class CompassHUD {
         if (this.minecraft.options.hideGui)
             return;
         Inventory inventory = this.player().getInventory();
-        if (!inventory.contains(IS_COMPASS) && !inventory.contains(IS_RECOVERY_COMPASS))
+        if (!inventory.contains(IS_COMPASS) && !inventory.contains(IS_RECOVERY_COMPASS)
+                && !ClientConfig.alwaysShowHud && !ClientConfig.alwaysShowWorldSpawn
+                && !ClientConfig.alwaysShowDeathPosition)
             return;
         this.minecraft.getProfiler().push("compass");
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
@@ -171,7 +174,7 @@ public class CompassHUD {
         NonNullList<POI> pois = NonNullList.create();
 
         // If the player has a compass, add a POI for the world spawn
-        if (this.player().getInventory().contains(IS_COMPASS)) {
+        if (ClientConfig.alwaysShowWorldSpawn || this.player().getInventory().contains(IS_COMPASS)) {
             if (this.level().dimension().equals(Level.OVERWORLD)) {
                 pois.add(POI.from(this.level().getSharedSpawnPos(), CompassIcon.STAR, new Color(0.6f, 0.6f, 1f, 1f)));
             }
@@ -187,7 +190,7 @@ public class CompassHUD {
         }
 
         // If the player has a recovery compass, add a POI for the last death location
-        if (this.player().getInventory().contains(IS_RECOVERY_COMPASS)) {
+        if (ClientConfig.alwaysShowDeathPosition || this.player().getInventory().contains(IS_RECOVERY_COMPASS)) {
             Optional<GlobalPos> deathPos = this.player().getLastDeathLocation();
             if (deathPos.isPresent()) {
                 if (deathPos.get().dimension().equals(this.level().dimension())) {
