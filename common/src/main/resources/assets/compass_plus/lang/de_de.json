@@ -1,7 +1,13 @@
 {
   "compass_plus.configuration.title": "Compass-Plus-Konfiguration",
-  "compass_plus.configuration.general": "Allgemein",
-  "text.compass_plus.config.alwaysShowHud": "HUD immer anzeigen",
-  "text.compass_plus.config.alwaysShowWorldSpawn": "Weltspawn immer anzeigen",
-  "text.compass_plus.config.alwaysShowDeathPosition": "Todesposition immer anzeigen"
+  "compass_plus.configuration.cardinal_directions": "Himmelsrichtungen",
+  "compass_plus.configuration.world_spawn": "Weltspawn",
+  "compass_plus.configuration.death_position": "Todesposition",
+  "compass_plus.configuration.custom_compasses": "Eigene Kompasse",
+  "text.compass_plus.config.always": "Immer anzeigen",
+  "text.compass_plus.config.compass": "Durch Kompass aktiviert",
+  "text.compass_plus.config.lodestoneCompass": "Durch Leitstein-Kompass aktiviert",
+  "text.compass_plus.config.recoveryCompass": "Durch Bergungskompass aktiviert",
+  "text.compass_plus.config.customCompasses": "Durch eigene Kompasse aktiviert",
+  "text.compass_plus.config.customCompassItems": "Eigene Kompass-Items"
 }

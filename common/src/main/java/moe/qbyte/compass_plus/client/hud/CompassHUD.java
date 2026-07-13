@@ -17,8 +17,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.CompassItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -29,7 +29,6 @@ import net.minecraft.world.phys.Vec3;
 
 import org.jetbrains.annotations.NotNull;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 public class CompassHUD {
     public static final int COMPASS_WIDTH = 220;
@@ -55,11 +54,6 @@ public class CompassHUD {
     public static final Sprite RUBY = new Sprite(GUI_TEXTURES, 13 * 16, 32, 15, 15);
     public static final Sprite DIAMOND = new Sprite(GUI_TEXTURES, 14 * 16, 32, 15, 15);
 
-    // Item-only checks; Inventory.contains(ItemStack) compares components since
-    // 1.20.5 and would no longer count lodestone-bound or renamed compasses.
-    private static final Predicate<ItemStack> IS_COMPASS = stack -> stack.is(Items.COMPASS);
-    private static final Predicate<ItemStack> IS_RECOVERY_COMPASS = stack -> stack.is(Items.RECOVERY_COMPASS);
-
     private final Minecraft minecraft = Minecraft.getInstance();
 
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -69,11 +63,41 @@ public class CompassHUD {
         // explicitly so the Fabric render callback behaves the same way.
         if (this.minecraft.options.hideGui)
             return;
-        Inventory inventory = this.player().getInventory();
-        if (!inventory.contains(IS_COMPASS) && !inventory.contains(IS_RECOVERY_COMPASS)
-                && !ClientConfig.alwaysShowHud && !ClientConfig.alwaysShowWorldSpawn
-                && !ClientConfig.alwaysShowDeathPosition)
+
+        // Classify the compasses in the inventory in a single pass. Item checks
+        // stay item-only (Inventory.contains(ItemStack) compares components since
+        // 1.20.5); a compass with a lodestone tracker component is its own kind.
+        boolean hasCompass = false;
+        boolean hasLodestoneCompass = false;
+        boolean hasRecoveryCompass = false;
+        boolean hasCustomCompass = false;
+        for (ItemStack stack : InventoryUtil.all(this.player().getInventory())) {
+            if (stack.isEmpty())
+                continue;
+            if (stack.is(Items.COMPASS)) {
+                if (stack.has(DataComponents.LODESTONE_TRACKER))
+                    hasLodestoneCompass = true;
+                else
+                    hasCompass = true;
+            } else if (stack.is(Items.RECOVERY_COMPASS)) {
+                hasRecoveryCompass = true;
+            } else if (ClientConfig.customCompassItems.contains(BuiltInRegistries.ITEM.getKey(stack.getItem()))) {
+                hasCustomCompass = true;
+            }
+        }
+
+        boolean showCardinalDirections = ClientConfig.cardinalDirections
+                .enabledFor(hasCompass, hasLodestoneCompass, hasRecoveryCompass, hasCustomCompass);
+        boolean showWorldSpawn = ClientConfig.worldSpawn
+                .enabledFor(hasCompass, hasLodestoneCompass, hasRecoveryCompass, hasCustomCompass);
+        boolean showDeathPosition = ClientConfig.deathPosition
+                .enabledFor(hasCompass, hasLodestoneCompass, hasRecoveryCompass, hasCustomCompass);
+
+        // Lodestone markers are inherent to their compasses (there is no data to
+        // show without one), so they keep the HUD visible on their own.
+        if (!showCardinalDirections && !showWorldSpawn && !showDeathPosition && !hasLodestoneCompass)
             return;
+
         this.minecraft.getProfiler().push("compass");
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
@@ -86,30 +110,32 @@ public class CompassHUD {
         LINE.blendBlit(guiGraphics, (int) Math.ceil(midX - (COMPASS_WIDTH / 2f)), 2);
         TICK.blendBlit(guiGraphics, (int) midX - 7, 0);
 
-        // south marker
-        float south = normalizedAngle(yRot);
-        if (Math.abs(south) <= COMPASS_WIDTH / 2d)
-            guiGraphics.drawCenteredString(this.minecraft.font, "S", (int) (midX - south), 5, 0xFFFFFFFF);
+        if (showCardinalDirections) {
+            // south marker
+            float south = normalizedAngle(yRot);
+            if (Math.abs(south) <= COMPASS_WIDTH / 2d)
+                guiGraphics.drawCenteredString(this.minecraft.font, "S", (int) (midX - south), 5, 0xFFFFFFFF);
 
-        float east = normalizedAngle(yRot + 90);
-        if (Math.abs(east) <= COMPASS_WIDTH / 2d)
-            guiGraphics.drawCenteredString(this.minecraft.font, "E", (int) (midX - east), 5, 0xFFFFFFFF);
+            float east = normalizedAngle(yRot + 90);
+            if (Math.abs(east) <= COMPASS_WIDTH / 2d)
+                guiGraphics.drawCenteredString(this.minecraft.font, "E", (int) (midX - east), 5, 0xFFFFFFFF);
 
-        float north = normalizedAngle(yRot + 180);
-        if (Math.abs(north) <= COMPASS_WIDTH / 2d)
-            guiGraphics.drawCenteredString(this.minecraft.font, "N", (int) (midX - north), 5, 0xFFFFFFFF);
+            float north = normalizedAngle(yRot + 180);
+            if (Math.abs(north) <= COMPASS_WIDTH / 2d)
+                guiGraphics.drawCenteredString(this.minecraft.font, "N", (int) (midX - north), 5, 0xFFFFFFFF);
 
-        float west = normalizedAngle(yRot + 270);
-        if (Math.abs(west) <= COMPASS_WIDTH / 2d)
-            guiGraphics.drawCenteredString(this.minecraft.font, "W", (int) (midX - west), 5, 0xFFFFFFFF);
+            float west = normalizedAngle(yRot + 270);
+            if (Math.abs(west) <= COMPASS_WIDTH / 2d)
+                guiGraphics.drawCenteredString(this.minecraft.font, "W", (int) (midX - west), 5, 0xFFFFFFFF);
 
-        for (int i = 1; i < 5; i++) {
-            float tickAngle = normalizedAngle(yRot + 45 + 90 * i);
-            if (Math.abs(tickAngle) <= COMPASS_WIDTH / 2d)
-                DIAGONALS_MARK.blendBlit(guiGraphics, (int) (midX - tickAngle - 7), 5);
+            for (int i = 1; i < 5; i++) {
+                float tickAngle = normalizedAngle(yRot + 45 + 90 * i);
+                if (Math.abs(tickAngle) <= COMPASS_WIDTH / 2d)
+                    DIAGONALS_MARK.blendBlit(guiGraphics, (int) (midX - tickAngle - 7), 5);
+            }
         }
 
-        NonNullList<POI> pointsOfInterest = this.getPointsOfInterest();
+        NonNullList<POI> pointsOfInterest = this.getPointsOfInterest(showWorldSpawn, showDeathPosition);
         pointsOfInterest.forEach(
                 poi -> {
                     double angle = this.getAngle(poi.pos(), partialTicks);
@@ -170,11 +196,11 @@ public class CompassHUD {
         return this.minecraft.level;
     }
 
-    public NonNullList<POI> getPointsOfInterest() {
+    public NonNullList<POI> getPointsOfInterest(boolean showWorldSpawn, boolean showDeathPosition) {
         NonNullList<POI> pois = NonNullList.create();
 
-        // If the player has a compass, add a POI for the world spawn
-        if (ClientConfig.alwaysShowWorldSpawn || this.player().getInventory().contains(IS_COMPASS)) {
+        // World spawn POI
+        if (showWorldSpawn) {
             if (this.level().dimension().equals(Level.OVERWORLD)) {
                 pois.add(POI.from(this.level().getSharedSpawnPos(), CompassIcon.STAR, new Color(0.6f, 0.6f, 1f, 1f)));
             }
@@ -189,8 +215,8 @@ public class CompassHUD {
             }
         }
 
-        // If the player has a recovery compass, add a POI for the last death location
-        if (ClientConfig.alwaysShowDeathPosition || this.player().getInventory().contains(IS_RECOVERY_COMPASS)) {
+        // Last death POI
+        if (showDeathPosition) {
             Optional<GlobalPos> deathPos = this.player().getLastDeathLocation();
             if (deathPos.isPresent()) {
                 if (deathPos.get().dimension().equals(this.level().dimension())) {
