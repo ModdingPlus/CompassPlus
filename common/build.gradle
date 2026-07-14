@@ -12,3 +12,18 @@ dependencies {
     // NeoForge itself and by Forge Config API Port on Fabric.
     modApi "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.forge_config_api_port_version"
 }
+
+// The public surface other mods compile against: the POI api package.
+// Classes are the unremapped dev output, so consumers use a plain
+// compileOnly on the api classifier.
+def apiJar = tasks.register('apiJar', Jar) {
+    from sourceSets.main.output
+    include 'moe/qbyte/compass_plus/api/**'
+    archiveClassifier = 'api'
+}
+
+assemble.dependsOn apiJar
+
+publishing.publications.named('mavenJava', MavenPublication) {
+    artifact apiJar
+}

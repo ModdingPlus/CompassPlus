@@ -74,6 +74,16 @@ subprojects {
     }
 }
 
+// Repacks the common api jar under the exact file name the Modrinth maven
+// needs for classifier resolution (see the modrinthNeoForge block).
+def modrinthApiJar = tasks.register('modrinthApiJar', Jar) {
+    def commonApiJar = project(':common').tasks.named('apiJar', Jar)
+    dependsOn commonApiJar
+    from commonApiJar.map { zipTree(it.archiveFile) }
+    destinationDirectory = layout.buildDirectory.dir('modrinthApi')
+    archiveFileName = "compass_plus-${mod_version}+neoforge-api.jar"
+}
+
 // Uploads the release jars to CurseForge and Modrinth: `./gradlew publishMods`.
 // Expects CURSEFORGE_TOKEN / MODRINTH_TOKEN in the environment, falling back to
 // gradle properties (e.g. from ~/.gradle/gradle.properties). Set the gradle
@@ -123,6 +133,9 @@ publishMods {
         from mrOptions
         file = fabricJar
         modLoaders.add('fabric')
+        // unique per-loader version numbers give unambiguous Modrinth maven
+        // coordinates (maven.modrinth:compass_plus:<version>+<loader>)
+        version = "${mod_version}+fabric"
         displayName = "Compass Plus ${mod_version} [Fabric]"
         requires 'fabric-api', 'forge-config-api-port'
         optional 'modmenu'
@@ -132,6 +145,11 @@ publishMods {
         from mrOptions
         file = neoforgeJar
         modLoaders.add('neoforge')
+        version = "${mod_version}+neoforge"
         displayName = "Compass Plus ${mod_version} [NeoForge]"
+        // the api jar rides along; the Modrinth maven matches additional files
+        // by exact name, so maven.modrinth:compass_plus:<version>+neoforge:api
+        // requires the file to be named <slug>-<version>+neoforge-api.jar
+        additionalFiles.from(modrinthApiJar)
     }
 }
