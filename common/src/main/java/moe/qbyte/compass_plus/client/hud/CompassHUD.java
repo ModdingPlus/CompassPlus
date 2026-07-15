@@ -1,7 +1,9 @@
 package moe.qbyte.compass_plus.client.hud;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import moe.qbyte.compass_plus.CompassPlus;
+import moe.qbyte.compass_plus.mixin.BossHealthOverlayAccessor;
 import moe.qbyte.compass_plus.api.Color;
 import moe.qbyte.compass_plus.api.CompassIcon;
 import moe.qbyte.compass_plus.api.POI;
@@ -130,9 +132,21 @@ public class CompassHUD {
         this.minecraft.getProfiler().push("compass");
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        // Blend like the vanilla gui render types: destination alpha stays
+        // opaque (ONE, ONE_MINUS_SRC_ALPHA). Plain SRC_ALPHA blending also
+        // writes the sprites' alpha into the framebuffer, and the pause
+        // menu's background blur reads that alpha back and darkens every
+        // pixel we left translucent into a thick dark halo around the HUD.
+        RenderSystem.blendFuncSeparate(
+                GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
         float midX = guiGraphics.guiWidth() / 2f;
         float yRot = this.player().getViewYRot(partialTicks);
+
+        // shift below the boss bar stack instead of overlapping it
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0, this.bossBarOffset(), 0);
 
         // line
         RenderSystem.enableBlend();
@@ -174,9 +188,34 @@ public class CompassHUD {
                     getIconSprite(poi.icon()).blendBlit(guiGraphics, (int) (midX - angle - 7), 2);
                 });
 
-        RenderSystem.enableBlend();
+        guiGraphics.pose().popPose();
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.defaultBlendFunc();
         this.minecraft.getProfiler().pop();
+    }
+
+    /**
+     * The boss bar stack shares the HUD's top center anchor, so the HUD moves
+     * below it while any bars are shown. Mirrors BossHealthOverlay.render:
+     * bars start at y = 12 with their name just above, advance 10 + line
+     * height per bar, and stop once the next row would reach a third of the
+     * screen height.
+     */
+    private int bossBarOffset() {
+        int bars = ((BossHealthOverlayAccessor) this.minecraft.gui.getBossOverlay())
+                .compass_plus$getEvents().size();
+        if (bars == 0)
+            return 0;
+        int limit = this.minecraft.getWindow().getGuiScaledHeight() / 3;
+        int top = 12;
+        for (int bar = 1; bar < bars; bar++) {
+            int next = top + 10 + this.minecraft.font.lineHeight;
+            if (next >= limit)
+                break;
+            top = next;
+        }
+        // the last bar's texture is 5 tall; keep a small gap below it
+        return top + 5 + 3;
     }
 
     public static Sprite getIconSprite(CompassIcon icon) {

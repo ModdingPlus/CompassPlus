@@ -20,6 +20,9 @@
       "moe.qbyte.compass_plus.fabric.client.CompassPlusFabricClient"
     ]
   },
+  "mixins": [
+    "compass_plus.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.19.3",
     "minecraft": "=1.21.1",

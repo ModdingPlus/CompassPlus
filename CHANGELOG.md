@@ -1,3 +1,10 @@
+# 2.0.1
+
+- Fixed the HUD sprites getting a thick dark halo while a menu with
+  background blur is open (for example the pause menu).
+- The HUD now moves below the boss bar stack while boss bars are shown
+  instead of overlapping them.
+
 # 2.0.0
 
 Full port to Minecraft 1.21.1, now available for Fabric and NeoForge.
@@ -17,4 +24,4 @@ Full port to Minecraft 1.21.1, now available for Fabric and NeoForge.
   from other mods), lodestone, treasure map, and explorer map markers each
   have an on/off toggle, and the slots searched for compasses are
   configurable (main hand, off hand, hotbar, inventory, equipment).
-- The Fabric version now requires Forge Config API Port.
+- The Fabric version requires Forge Config API Port.
