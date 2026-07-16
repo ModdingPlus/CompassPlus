@@ -32,8 +32,8 @@ public class CompassPlusNeoForge {
         // NeoForge's built-in config screen, reachable from the mod list
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
 
-        CompassHUD hud = new CompassHUD();
         modEventBus.addListener((RegisterGuiLayersEvent event) -> event.registerAboveAll(
-                ResourceLocation.fromNamespaceAndPath(CompassPlus.MODID, "compass_hud"), hud::render));
+                ResourceLocation.fromNamespaceAndPath(CompassPlus.MODID, "compass_hud"),
+                CompassHUD.INSTANCE::render));
     }
 }

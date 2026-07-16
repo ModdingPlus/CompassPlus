@@ -29,7 +29,6 @@ public class CompassPlusFabricClient implements ClientModInitializer {
         // FCAP's port of NeoForge's config screen, exposed through Mod Menu
         ConfigScreenFactoryRegistry.INSTANCE.register(CompassPlus.MODID, ConfigurationScreen::new);
 
-        CompassHUD hud = new CompassHUD();
-        HudRenderCallback.EVENT.register(hud::render);
+        HudRenderCallback.EVENT.register(CompassHUD.INSTANCE::render);
     }
 }

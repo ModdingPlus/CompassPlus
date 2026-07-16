@@ -34,6 +34,7 @@ public final class ClientConfig {
     public static ComponentSettings deathPosition = ClientConfigTemplate.DEATH_POSITION_DEFAULTS;
     public static Set<HudComponent> enabledMarkers = ClientConfigTemplate.MARKERS_DEFAULTS;
     public static Set<CompassSlot> compassSlots = ClientConfigTemplate.COMPASS_SLOTS_DEFAULTS;
+    public static BossBarPlacement bossBarPlacement = ClientConfigTemplate.BOSS_BAR_PLACEMENT_DEFAULT;
 
     private ClientConfig() {}
 
@@ -44,6 +45,7 @@ public final class ClientConfig {
         deathPosition = CLIENT.deathPosition.snapshot();
         enabledMarkers = CLIENT.markers.snapshot();
         compassSlots = CLIENT.compassSlots.snapshot();
+        bossBarPlacement = CLIENT.bossBarPlacement.get();
     }
 
     /** Which compass kinds make a HUD component visible. */
@@ -66,12 +68,14 @@ public final class ClientConfig {
         static final Set<HudComponent> MARKERS_DEFAULTS =
                 EnumSet.of(HudComponent.LODESTONES, HudComponent.TREASURE_MAPS, HudComponent.EXPLORER_MAPS);
         static final Set<CompassSlot> COMPASS_SLOTS_DEFAULTS = EnumSet.allOf(CompassSlot.class);
+        static final BossBarPlacement BOSS_BAR_PLACEMENT_DEFAULT = BossBarPlacement.BELOW_BOSS_BARS;
 
         public final ComponentTemplate cardinalDirections;
         public final ComponentTemplate worldSpawn;
         public final ComponentTemplate deathPosition;
         public final MarkersTemplate markers;
         public final SlotsTemplate compassSlots;
+        public final ModConfigSpec.EnumValue<BossBarPlacement> bossBarPlacement;
 
         ClientConfigTemplate(ModConfigSpec.Builder builder) {
             cardinalDirections = new ComponentTemplate(builder, "cardinal_directions",
@@ -82,6 +86,12 @@ public final class ClientConfig {
                     "the marker for your last death (same dimension only)", DEATH_POSITION_DEFAULTS);
             markers = new MarkersTemplate(builder);
             compassSlots = new SlotsTemplate(builder);
+            bossBarPlacement = builder
+                    .comment("Where the HUD goes while boss bars are shown: BELOW_BOSS_BARS moves the",
+                            "HUD down below the boss bar stack, ABOVE_BOSS_BARS keeps the HUD at the",
+                            "top of the screen and pushes the boss bars down instead.")
+                    .translation(key("bossBarPlacement"))
+                    .defineEnum("boss_bar_placement", BOSS_BAR_PLACEMENT_DEFAULT);
         }
     }
 

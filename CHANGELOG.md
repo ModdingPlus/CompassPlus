@@ -2,8 +2,9 @@
 
 - Fixed the HUD sprites getting a thick dark halo while a menu with
   background blur is open (for example the pause menu).
-- The HUD now moves below the boss bar stack while boss bars are shown
-  instead of overlapping them.
+- The HUD no longer overlaps boss bars: a new HUD placement setting picks
+  whether it moves below the boss bar stack (default) or stays at the top
+  of the screen and pushes the boss bars down instead.
 
 # 2.0.0
 

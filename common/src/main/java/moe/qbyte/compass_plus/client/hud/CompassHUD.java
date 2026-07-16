@@ -7,6 +7,7 @@ import moe.qbyte.compass_plus.mixin.BossHealthOverlayAccessor;
 import moe.qbyte.compass_plus.api.Color;
 import moe.qbyte.compass_plus.api.CompassIcon;
 import moe.qbyte.compass_plus.api.POI;
+import moe.qbyte.compass_plus.config.BossBarPlacement;
 import moe.qbyte.compass_plus.config.ClientConfig;
 import moe.qbyte.compass_plus.config.CompassKind;
 import moe.qbyte.compass_plus.config.CompassSlot;
@@ -73,16 +74,20 @@ public class CompassHUD {
     private static final ResourceKey<MapDecorationType> RED_X_KEY =
             MapDecorationTypes.RED_X.unwrapKey().orElseThrow();
 
+    /** How far the boss bars are pushed down while the HUD sits above them. */
+    public static final int BOSS_BAR_SHIFT = 18;
+
+    public static final CompassHUD INSTANCE = new CompassHUD();
+
     private final Minecraft minecraft = Minecraft.getInstance();
 
-    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
-        if (this.minecraft.player == null || this.minecraft.level == null)
-            return;
-        // NeoForge's gui layers are skipped on F1 by vanilla's LayeredDraw; check
-        // explicitly so the Fabric render callback behaves the same way.
-        if (this.minecraft.options.hideGui)
-            return;
+    private CompassHUD() {}
 
+    /** Everything one frame of the HUD shows, derived from the searched slots. */
+    private record HudState(EnumSet<HudComponent> visibleComponents, List<ItemStack> searchedStacks,
+                            List<Vec2> treasureTargets, List<Vec2> explorerTargets) {}
+
+    private HudState computeState() {
         // Classify the compasses in the searched slots in a single pass. Item
         // checks stay item-only (Inventory.contains(ItemStack) compares components
         // since 1.20.5); a compass with a lodestone tracker component is its own kind.
@@ -125,6 +130,42 @@ public class CompassHUD {
             visibleComponents.add(HudComponent.TREASURE_MAPS);
         if (markers.contains(HudComponent.EXPLORER_MAPS) && !explorerTargets.isEmpty())
             visibleComponents.add(HudComponent.EXPLORER_MAPS);
+
+        return new HudState(visibleComponents, searchedStacks, treasureTargets, explorerTargets);
+    }
+
+    /** Whether the HUD draws anything this frame. */
+    private boolean isVisible() {
+        if (this.minecraft.player == null || this.minecraft.level == null)
+            return false;
+        if (this.minecraft.options.hideGui)
+            return false;
+        return !this.computeState().visibleComponents().isEmpty();
+    }
+
+    /**
+     * How far BossHealthOverlayMixin pushes the boss bars down this frame; zero
+     * unless the HUD is configured to sit above them and is currently visible.
+     */
+    public int bossBarShift() {
+        if (ClientConfig.bossBarPlacement != BossBarPlacement.ABOVE_BOSS_BARS)
+            return 0;
+        return this.isVisible() ? BOSS_BAR_SHIFT : 0;
+    }
+
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        if (this.minecraft.player == null || this.minecraft.level == null)
+            return;
+        // NeoForge's gui layers are skipped on F1 by vanilla's LayeredDraw; check
+        // explicitly so the Fabric render callback behaves the same way.
+        if (this.minecraft.options.hideGui)
+            return;
+
+        HudState state = this.computeState();
+        EnumSet<HudComponent> visibleComponents = state.visibleComponents();
+        List<ItemStack> searchedStacks = state.searchedStacks();
+        List<Vec2> treasureTargets = state.treasureTargets();
+        List<Vec2> explorerTargets = state.explorerTargets();
 
         if (visibleComponents.isEmpty())
             return;
@@ -196,12 +237,14 @@ public class CompassHUD {
 
     /**
      * The boss bar stack shares the HUD's top center anchor, so the HUD moves
-     * below it while any bars are shown. Mirrors BossHealthOverlay.render:
-     * bars start at y = 12 with their name just above, advance 10 + line
-     * height per bar, and stop once the next row would reach a third of the
-     * screen height.
+     * below it while any bars are shown (unless it is configured to sit above
+     * them instead). Mirrors BossHealthOverlay.render: bars start at y = 12
+     * with their name just above, advance 10 + line height per bar, and stop
+     * once the next row would reach a third of the screen height.
      */
     private int bossBarOffset() {
+        if (ClientConfig.bossBarPlacement != BossBarPlacement.BELOW_BOSS_BARS)
+            return 0;
         int bars = ((BossHealthOverlayAccessor) this.minecraft.gui.getBossOverlay())
                 .compass_plus$getEvents().size();
         if (bars == 0)
