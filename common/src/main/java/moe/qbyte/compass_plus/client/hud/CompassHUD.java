@@ -139,7 +139,7 @@ public class CompassHUD {
     private boolean isVisible() {
         if (this.minecraft.player == null || this.minecraft.level == null)
             return false;
-        if (this.minecraft.options.hideGui)
+        if (this.minecraft.gui.hud.isHidden())
             return false;
         return !this.computeState().visibleComponents().isEmpty();
     }
@@ -157,9 +157,8 @@ public class CompassHUD {
     public void render(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker) {
         if (this.minecraft.player == null || this.minecraft.level == null)
             return;
-        // NeoForge's gui layers are skipped on F1 by vanilla's LayeredDraw; check
-        // explicitly so the Fabric render callback behaves the same way.
-        if (this.minecraft.options.hideGui)
+        // check the F1 state explicitly so both loaders' render hooks behave the same
+        if (this.minecraft.gui.hud.isHidden())
             return;
 
         HudState state = this.computeState();
@@ -234,7 +233,7 @@ public class CompassHUD {
     private int bossBarOffset() {
         if (ClientConfig.bossBarPlacement != BossBarPlacement.BELOW_BOSS_BARS)
             return 0;
-        int bars = ((BossHealthOverlayAccessor) this.minecraft.gui.getBossOverlay())
+        int bars = ((BossHealthOverlayAccessor) this.minecraft.gui.hud.getBossOverlay())
                 .compass_plus$getEvents().size();
         if (bars == 0)
             return 0;

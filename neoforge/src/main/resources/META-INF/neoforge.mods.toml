@@ -17,16 +17,14 @@ logoFile = "assets/compass_plus/logo.png"
 [[dependencies.compass_plus]]
 modId = "neoforge"
 type = "required"
-# 26.1.2 floor: NeoForge never stabilized on the earlier hotfixes and
-# Forge Config API Port / the wider ecosystem require its API level anyway
-versionRange = "[26.1.2,26.2)"
+versionRange = "[26.2,)"
 ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.compass_plus]]
 modId = "minecraft"
 type = "required"
-versionRange = "[26.1,26.2)"
+versionRange = "[26.2,)"
 ordering = "NONE"
 side = "CLIENT"
 
