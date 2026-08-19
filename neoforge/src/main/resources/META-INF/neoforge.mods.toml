@@ -17,14 +17,14 @@ logoFile = "assets/compass_plus/logo.png"
 [[dependencies.compass_plus]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21.1,)"
+versionRange = "[21.11,)"
 ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.compass_plus]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.1,1.21.2)"
+versionRange = "[1.21.11,1.21.12)"
 ordering = "NONE"
 side = "CLIENT"
 

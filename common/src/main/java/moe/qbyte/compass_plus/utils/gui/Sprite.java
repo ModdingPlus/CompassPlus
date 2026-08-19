@@ -1,16 +1,22 @@
 package moe.qbyte.compass_plus.utils.gui;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 
-public record Sprite(ResourceLocation resourceLocation, int u, int v, int width, int height) {
+public record Sprite(Identifier resourceLocation, int u, int v, int width, int height) {
     public void blit(GuiGraphics guiGraphics, int x, int y) {
-        guiGraphics.blit(this.resourceLocation, x, y, this.u, this.v, this.width, this.height, 256, 256);
+        this.blit(guiGraphics, x, y, 0xFFFFFFFF);
     }
 
-    public void blendBlit(GuiGraphics guiGraphics, int x, int y) {
-        RenderSystem.enableBlend();
-        this.blit(guiGraphics, x, y);
+    /**
+     * Draws the sprite tinted with the given ARGB color. The vanilla gui
+     * pipeline blends like the old blendFuncSeparate hack did: destination
+     * alpha stays opaque, so the pause menu blur does not darken the HUD's
+     * translucent pixels into a halo.
+     */
+    public void blit(GuiGraphics guiGraphics, int x, int y, int argb) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, this.resourceLocation,
+                x, y, this.u, this.v, this.width, this.height, 256, 256, argb);
     }
 }

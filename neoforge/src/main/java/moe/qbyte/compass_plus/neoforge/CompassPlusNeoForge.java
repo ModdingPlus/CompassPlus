@@ -3,7 +3,7 @@ package moe.qbyte.compass_plus.neoforge;
 import moe.qbyte.compass_plus.CompassPlus;
 import moe.qbyte.compass_plus.client.hud.CompassHUD;
 import moe.qbyte.compass_plus.config.ClientConfig;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -33,7 +33,7 @@ public class CompassPlusNeoForge {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
 
         modEventBus.addListener((RegisterGuiLayersEvent event) -> event.registerAboveAll(
-                ResourceLocation.fromNamespaceAndPath(CompassPlus.MODID, "compass_hud"),
+                Identifier.fromNamespaceAndPath(CompassPlus.MODID, "compass_hud"),
                 CompassHUD.INSTANCE::render));
     }
 }

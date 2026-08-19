@@ -25,15 +25,15 @@ public class BossHealthOverlayMixin {
         int shift = hasBars ? CompassHUD.INSTANCE.bossBarShift() : 0;
         this.compass_plus$shifted = shift != 0;
         if (this.compass_plus$shifted) {
-            guiGraphics.pose().pushPose();
-            guiGraphics.pose().translate(0, shift, 0);
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(0, shift);
         }
     }
 
     @Inject(method = "render", at = @At("RETURN"))
     private void compass_plus$restore(GuiGraphics guiGraphics, CallbackInfo ci) {
         if (this.compass_plus$shifted) {
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
             this.compass_plus$shifted = false;
         }
     }

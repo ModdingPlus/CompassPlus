@@ -1,7 +1,5 @@
 package moe.qbyte.compass_plus.client.hud;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import moe.qbyte.compass_plus.CompassPlus;
 import moe.qbyte.compass_plus.mixin.BossHealthOverlayAccessor;
 import moe.qbyte.compass_plus.api.Color;
@@ -23,13 +21,16 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.profiling.Profiler;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.CompassItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.LodestoneTracker;
 import net.minecraft.world.item.component.MapDecorations;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.saveddata.maps.MapDecorationType;
 import net.minecraft.world.level.saveddata.maps.MapDecorationTypes;
 import net.minecraft.world.level.saveddata.maps.MapId;
@@ -49,7 +50,7 @@ import java.util.Set;
 
 public class CompassHUD {
     public static final int COMPASS_WIDTH = 220;
-    public static final ResourceLocation GUI_TEXTURES = ResourceLocation.fromNamespaceAndPath(CompassPlus.MODID,
+    public static final Identifier GUI_TEXTURES = Identifier.fromNamespaceAndPath(CompassPlus.MODID,
             "textures/gui/gui_icons.png");
 
     public static final Sprite LINE = new Sprite(GUI_TEXTURES, 0, 0, 256, 16);
@@ -93,7 +94,7 @@ public class CompassHUD {
         // since 1.20.5); a compass with a lodestone tracker component is its own kind.
         List<ItemStack> searchedStacks = this.searchedStacks();
         EnumSet<CompassKind> presentKinds = EnumSet.noneOf(CompassKind.class);
-        Set<ResourceLocation> searchedItems = new HashSet<>();
+        Set<Identifier> searchedItems = new HashSet<>();
         List<Vec2> treasureTargets = new ArrayList<>();
         List<Vec2> explorerTargets = new ArrayList<>();
         for (ItemStack stack : searchedStacks) {
@@ -170,29 +171,19 @@ public class CompassHUD {
         if (visibleComponents.isEmpty())
             return;
 
-        this.minecraft.getProfiler().push("compass");
+        Profiler.get().push("compass");
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        // Blend like the vanilla gui render types: destination alpha stays
-        // opaque (ONE, ONE_MINUS_SRC_ALPHA). Plain SRC_ALPHA blending also
-        // writes the sprites' alpha into the framebuffer, and the pause
-        // menu's background blur reads that alpha back and darkens every
-        // pixel we left translucent into a thick dark halo around the HUD.
-        RenderSystem.blendFuncSeparate(
-                GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
-                GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
         float midX = guiGraphics.guiWidth() / 2f;
         float yRot = this.player().getViewYRot(partialTicks);
 
         // shift below the boss bar stack instead of overlapping it
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, this.bossBarOffset(), 0);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(0, this.bossBarOffset());
 
         // line
-        RenderSystem.enableBlend();
-        LINE.blendBlit(guiGraphics, (int) Math.ceil(midX - (COMPASS_WIDTH / 2f)), 2);
-        TICK.blendBlit(guiGraphics, (int) midX - 7, 0);
+        LINE.blit(guiGraphics, (int) Math.ceil(midX - (COMPASS_WIDTH / 2f)), 2);
+        TICK.blit(guiGraphics, (int) midX - 7, 0);
 
         if (visibleComponents.contains(HudComponent.CARDINAL_DIRECTIONS)) {
             // south marker
@@ -215,7 +206,7 @@ public class CompassHUD {
             for (int i = 1; i < 5; i++) {
                 float tickAngle = normalizedAngle(yRot + 45 + 90 * i);
                 if (Math.abs(tickAngle) <= COMPASS_WIDTH / 2d)
-                    DIAGONALS_MARK.blendBlit(guiGraphics, (int) (midX - tickAngle - 7), 5);
+                    DIAGONALS_MARK.blit(guiGraphics, (int) (midX - tickAngle - 7), 5);
             }
         }
 
@@ -225,14 +216,12 @@ public class CompassHUD {
                 poi -> {
                     double angle = this.getAngle(poi.pos(), partialTicks);
                     angle = clamp(angle, COMPASS_WIDTH / -2f, COMPASS_WIDTH / 2f);
-                    poi.color().setAsShaderColor();
-                    getIconSprite(poi.icon()).blendBlit(guiGraphics, (int) (midX - angle - 7), 2);
+                    getIconSprite(poi.icon()).blit(guiGraphics, (int) (midX - angle - 7), 2,
+                            poi.color().argb());
                 });
 
-        guiGraphics.pose().popPose();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.defaultBlendFunc();
-        this.minecraft.getProfiler().pop();
+        guiGraphics.pose().popMatrix();
+        Profiler.get().pop();
     }
 
     /**
@@ -335,16 +324,18 @@ public class CompassHUD {
         // main hand is a subset of the hotbar, which is a subset of the main
         // inventory; only the widest enabled group needs to be collected
         if (slots.contains(CompassSlot.INVENTORY)) {
-            stacks.addAll(inventory.items);
+            stacks.addAll(inventory.getNonEquipmentItems());
         } else if (slots.contains(CompassSlot.HOTBAR)) {
-            stacks.addAll(inventory.items.subList(0, Inventory.getSelectionSize()));
+            stacks.addAll(inventory.getNonEquipmentItems().subList(0, Inventory.getSelectionSize()));
         } else if (slots.contains(CompassSlot.MAIN_HAND)) {
-            stacks.add(inventory.getSelected());
+            stacks.add(inventory.getSelectedItem());
         }
         if (slots.contains(CompassSlot.OFF_HAND))
-            stacks.addAll(inventory.offhand);
+            stacks.add(this.player().getItemBySlot(EquipmentSlot.OFFHAND));
         if (slots.contains(CompassSlot.EQUIPMENT))
-            stacks.addAll(inventory.armor);
+            for (EquipmentSlot slot : EquipmentSlot.values())
+                if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR)
+                    stacks.add(this.player().getItemBySlot(slot));
         return stacks;
     }
 
@@ -365,10 +356,11 @@ public class CompassHUD {
                                                 List<Vec2> treasureTargets, List<Vec2> explorerTargets) {
         NonNullList<POI> pois = NonNullList.create();
 
-        // World spawn POI
+        // World spawn POI (the respawn data knows its dimension; vanilla's is the overworld)
         if (visibleComponents.contains(HudComponent.WORLD_SPAWN)) {
-            if (this.level().dimension().equals(Level.OVERWORLD)) {
-                pois.add(POI.from(this.level().getSharedSpawnPos(), CompassIcon.STAR, new Color(0.6f, 0.6f, 1f, 1f)));
+            LevelData.RespawnData spawn = this.level().getRespawnData();
+            if (this.level().dimension().equals(spawn.dimension())) {
+                pois.add(POI.from(spawn.pos(), CompassIcon.STAR, new Color(0.6f, 0.6f, 1f, 1f)));
             }
         }
 

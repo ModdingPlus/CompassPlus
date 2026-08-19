@@ -2,7 +2,7 @@ package moe.qbyte.compass_plus.config;
 
 import moe.qbyte.compass_plus.CompassPlus;
 import moe.qbyte.compass_plus.client.hud.HudComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -50,8 +50,8 @@ public final class ClientConfig {
 
     /** Which compass kinds make a HUD component visible. */
     public record ComponentSettings(boolean always, Set<CompassKind> enabledKinds,
-                                    Set<ResourceLocation> customCompasses) {
-        public boolean enabledFor(Set<CompassKind> presentKinds, Set<ResourceLocation> searchedItems) {
+                                    Set<Identifier> customCompasses) {
+        public boolean enabledFor(Set<CompassKind> presentKinds, Set<Identifier> searchedItems) {
             return this.always
                     || !Collections.disjoint(this.enabledKinds, presentKinds)
                     || !Collections.disjoint(this.customCompasses, searchedItems);
@@ -124,7 +124,7 @@ public final class ClientConfig {
                     .comment("Item ids that also enable " + what + " from a searched slot, e.g. [\"somemod:gps\"].")
                     .translation(key("customCompasses"))
                     .defineListAllowEmpty("custom_compasses", List.of(), () -> "",
-                            o -> o instanceof String s && ResourceLocation.tryParse(s) != null);
+                            o -> o instanceof String s && Identifier.tryParse(s) != null);
             builder.pop();
         }
 
@@ -138,7 +138,7 @@ public final class ClientConfig {
                 kinds.add(CompassKind.RECOVERY_COMPASS);
             return new ComponentSettings(always.get(), kinds,
                     customCompasses.get().stream()
-                            .map(ResourceLocation::tryParse)
+                            .map(Identifier::tryParse)
                             .filter(Objects::nonNull)
                             .collect(Collectors.toUnmodifiableSet()));
         }
