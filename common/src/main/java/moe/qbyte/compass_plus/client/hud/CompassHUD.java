@@ -12,7 +12,7 @@ import moe.qbyte.compass_plus.config.CompassSlot;
 import moe.qbyte.compass_plus.utils.gui.Sprite;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -154,7 +154,7 @@ public class CompassHUD {
         return this.isVisible() ? BOSS_BAR_SHIFT : 0;
     }
 
-    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+    public void render(GuiGraphicsExtractor guiGraphics, DeltaTracker deltaTracker) {
         if (this.minecraft.player == null || this.minecraft.level == null)
             return;
         // NeoForge's gui layers are skipped on F1 by vanilla's LayeredDraw; check
@@ -189,19 +189,19 @@ public class CompassHUD {
             // south marker
             float south = normalizedAngle(yRot);
             if (Math.abs(south) <= COMPASS_WIDTH / 2d)
-                guiGraphics.drawCenteredString(this.minecraft.font, "S", (int) (midX - south), 5, 0xFFFFFFFF);
+                this.drawCenteredString(guiGraphics, "S", (int) (midX - south), 5, 0xFFFFFFFF);
 
             float east = normalizedAngle(yRot + 90);
             if (Math.abs(east) <= COMPASS_WIDTH / 2d)
-                guiGraphics.drawCenteredString(this.minecraft.font, "E", (int) (midX - east), 5, 0xFFFFFFFF);
+                this.drawCenteredString(guiGraphics, "E", (int) (midX - east), 5, 0xFFFFFFFF);
 
             float north = normalizedAngle(yRot + 180);
             if (Math.abs(north) <= COMPASS_WIDTH / 2d)
-                guiGraphics.drawCenteredString(this.minecraft.font, "N", (int) (midX - north), 5, 0xFFFFFFFF);
+                this.drawCenteredString(guiGraphics, "N", (int) (midX - north), 5, 0xFFFFFFFF);
 
             float west = normalizedAngle(yRot + 270);
             if (Math.abs(west) <= COMPASS_WIDTH / 2d)
-                guiGraphics.drawCenteredString(this.minecraft.font, "W", (int) (midX - west), 5, 0xFFFFFFFF);
+                this.drawCenteredString(guiGraphics, "W", (int) (midX - west), 5, 0xFFFFFFFF);
 
             for (int i = 1; i < 5; i++) {
                 float tickAngle = normalizedAngle(yRot + 45 + 90 * i);
@@ -248,6 +248,11 @@ public class CompassHUD {
         }
         // the last bar's texture is 5 tall; keep a small gap below it
         return top + 5 + 3;
+    }
+
+    /** drawCenteredString is gone since 26.1; center over the plain text() primitive. */
+    private void drawCenteredString(GuiGraphicsExtractor guiGraphics, String text, int centerX, int y, int color) {
+        guiGraphics.text(this.minecraft.font, text, centerX - this.minecraft.font.width(text) / 2, y, color);
     }
 
     public static Sprite getIconSprite(CompassIcon icon) {

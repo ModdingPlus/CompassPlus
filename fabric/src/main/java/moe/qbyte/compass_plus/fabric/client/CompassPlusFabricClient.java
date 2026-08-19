@@ -7,7 +7,8 @@ import moe.qbyte.compass_plus.CompassPlus;
 import moe.qbyte.compass_plus.client.hud.CompassHUD;
 import moe.qbyte.compass_plus.config.ClientConfig;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 
@@ -29,6 +30,9 @@ public class CompassPlusFabricClient implements ClientModInitializer {
         // FCAP's port of NeoForge's config screen, exposed through Mod Menu
         ConfigScreenFactoryRegistry.INSTANCE.register(CompassPlus.MODID, ConfigurationScreen::new);
 
-        HudRenderCallback.EVENT.register(CompassHUD.INSTANCE::render);
+        // topmost hud element, the fabric equivalent of NeoForge's registerAboveAll
+        HudElementRegistry.addLast(
+                Identifier.fromNamespaceAndPath(CompassPlus.MODID, "compass_hud"),
+                CompassHUD.INSTANCE::render);
     }
 }

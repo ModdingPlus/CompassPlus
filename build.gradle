@@ -1,7 +1,8 @@
 plugins {
-    id 'dev.architectury.loom' version '1.17-SNAPSHOT' apply false
+    // the no-remap loom variant: 26.1+ is unobfuscated, so nothing is remapped anymore
+    id 'dev.architectury.loom-no-remap' version '1.17-SNAPSHOT' apply false
     id 'architectury-plugin' version '3.5-SNAPSHOT'
-    id 'com.gradleup.shadow' version '8.3.6' apply false
+    id 'com.gradleup.shadow' version '9.6.1' apply false
     id 'me.modmuss50.mod-publish-plugin' version '2.1.1'
 }
 
@@ -15,7 +16,7 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'dev.architectury.loom'
+    apply plugin: 'dev.architectury.loom-no-remap'
     apply plugin: 'architectury-plugin'
     apply plugin: 'maven-publish'
 
@@ -26,10 +27,6 @@ subprojects {
 
     repositories {
         maven {
-            name = 'ParchmentMC'
-            url = 'https://maven.parchmentmc.org'
-        }
-        maven {
             name = 'Fuzs Mod Resources'
             url = 'https://raw.githubusercontent.com/Fuzss/modresources/main/maven/'
         }
@@ -39,16 +36,8 @@ subprojects {
         }
     }
 
-    loom {
-        silentMojangMappingsLicense()
-    }
-
     dependencies {
-        minecraft "net.minecraft:minecraft:$rootProject.minecraft_version"
-        mappings loom.layered {
-            it.officialMojangMappings()
-            it.parchment("org.parchmentmc.data:parchment-$rootProject.minecraft_version:$rootProject.parchment_version@zip")
-        }
+        minecraft "com.mojang:minecraft:$rootProject.minecraft_version"
     }
 
     java {
@@ -56,12 +45,12 @@ subprojects {
         // if it is present.
         withSourcesJar()
 
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
     }
 
     tasks.withType(JavaCompile).configureEach {
-        it.options.release = 21
+        it.options.release = 25
     }
 
     publishing {
@@ -73,6 +62,12 @@ subprojects {
         }
     }
 }
+
+// The blocks below reference tasks of the subprojects (apiJar, shadowJar),
+// which only exist once those projects are configured.
+evaluationDependsOn ':common'
+evaluationDependsOn ':fabric'
+evaluationDependsOn ':neoforge'
 
 // Repacks the common api jar under the exact file name the Modrinth maven
 // needs for classifier resolution (see the modrinthNeoForge block).
@@ -93,15 +88,18 @@ publishMods {
     type = STABLE
     dryRun = providers.gradleProperty('publishDryRun').isPresent()
 
-    def fabricJar = project(':fabric').tasks.named('remapJar').flatMap { it.archiveFile }
-    def neoforgeJar = project(':neoforge').tasks.named('remapJar').flatMap { it.archiveFile }
+    def fabricJar = project(':fabric').tasks.named('shadowJar').flatMap { it.archiveFile }
+    def neoforgeJar = project(':neoforge').tasks.named('shadowJar').flatMap { it.archiveFile }
+
+    // per-loader site tags: only combinations that were actually tested
+    def fabricGameVersions = fabric_game_versions.split(',').toList()
+    def neoforgeGameVersions = neoforge_game_versions.split(',').toList()
 
     def cfOptions = curseforgeOptions {
         accessToken = providers.environmentVariable('CURSEFORGE_TOKEN')
                 .orElse(providers.gradleProperty('CURSEFORGE_TOKEN'))
         projectId = '1005106'
-        minecraftVersions.add(minecraft_version)
-        javaVersions.add(JavaVersion.VERSION_21)
+        javaVersions.add(JavaVersion.VERSION_25)
         clientRequired = true
         serverRequired = false
     }
@@ -110,11 +108,11 @@ publishMods {
         accessToken = providers.environmentVariable('MODRINTH_TOKEN')
                 .orElse(providers.gradleProperty('MODRINTH_TOKEN'))
         projectId = 'xI5eonVo' // compass_plus
-        minecraftVersions.add(minecraft_version)
     }
 
     curseforge('curseforgeFabric') {
         from cfOptions
+        minecraftVersions.addAll(fabricGameVersions)
         file = fabricJar
         modLoaders.add('fabric')
         displayName = "Compass Plus ${mod_version} [Fabric]"
@@ -124,6 +122,7 @@ publishMods {
 
     curseforge('curseforgeNeoForge') {
         from cfOptions
+        minecraftVersions.addAll(neoforgeGameVersions)
         file = neoforgeJar
         modLoaders.add('neoforge')
         displayName = "Compass Plus ${mod_version} [NeoForge]"
@@ -131,6 +130,7 @@ publishMods {
 
     modrinth('modrinthFabric') {
         from mrOptions
+        minecraftVersions.addAll(fabricGameVersions)
         file = fabricJar
         modLoaders.add('fabric')
         // unique per-loader version numbers give unambiguous Modrinth maven
@@ -143,6 +143,7 @@ publishMods {
 
     modrinth('modrinthNeoForge') {
         from mrOptions
+        minecraftVersions.addAll(neoforgeGameVersions)
         file = neoforgeJar
         modLoaders.add('neoforge')
         version = "${mod_version}+neoforge"

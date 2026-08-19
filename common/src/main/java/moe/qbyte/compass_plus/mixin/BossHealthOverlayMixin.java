@@ -1,7 +1,7 @@
 package moe.qbyte.compass_plus.mixin;
 
 import moe.qbyte.compass_plus.client.hud.CompassHUD;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.BossHealthOverlay;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,8 +18,8 @@ public class BossHealthOverlayMixin {
     @Unique
     private boolean compass_plus$shifted;
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void compass_plus$shiftBelowHud(GuiGraphics guiGraphics, CallbackInfo ci) {
+    @Inject(method = "extractRenderState", at = @At("HEAD"))
+    private void compass_plus$shiftBelowHud(GuiGraphicsExtractor guiGraphics, CallbackInfo ci) {
         // reuse the accessor to skip the HUD visibility scan while no bars exist
         boolean hasBars = !((BossHealthOverlayAccessor) this).compass_plus$getEvents().isEmpty();
         int shift = hasBars ? CompassHUD.INSTANCE.bossBarShift() : 0;
@@ -30,8 +30,8 @@ public class BossHealthOverlayMixin {
         }
     }
 
-    @Inject(method = "render", at = @At("RETURN"))
-    private void compass_plus$restore(GuiGraphics guiGraphics, CallbackInfo ci) {
+    @Inject(method = "extractRenderState", at = @At("RETURN"))
+    private void compass_plus$restore(GuiGraphicsExtractor guiGraphics, CallbackInfo ci) {
         if (this.compass_plus$shifted) {
             guiGraphics.pose().popMatrix();
             this.compass_plus$shifted = false;

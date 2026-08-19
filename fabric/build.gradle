@@ -25,19 +25,19 @@ configurations {
 }
 
 dependencies {
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    implementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
     // Fabric API, needed for the HUD render callback.
-    modImplementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
+    implementation "net.fabricmc.fabric-api:fabric-api:$rootProject.fabric_api_version"
 
     // Forge Config API Port, runtime provider of the NeoForge config API on Fabric
-    modApi "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:$rootProject.forge_config_api_port_version"
+    api "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:$rootProject.forge_config_api_port_version"
 
     // dev-runtime QoL: mod list + config screen access (FCAP hooks its ported
     // NeoForge ConfigurationScreen into Mod Menu)
-    modLocalRuntime "com.terraformersmc:modmenu:$rootProject.mod_menu_version"
+    localRuntime "com.terraformersmc:modmenu:$rootProject.mod_menu_version"
 
-    common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
+    common(project(path: ':common')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 }
 
@@ -48,14 +48,24 @@ processResources {
     }
 }
 
-shadowJar {
-    configurations = [project.configurations.shadowBundle]
-    archiveClassifier = 'dev-shadow'
+// With no remapping the shadow jar IS the release jar: it merges this module's
+// classes with the transformed common classes under the unclassified name.
+jar {
+    archiveClassifier = 'raw'
 }
 
-remapJar {
-    inputFile.set shadowJar.archiveFile
+shadowJar {
+    dependsOn jar
+    mainSpec.sourcePaths.clear()
+    from(zipTree(jar.archiveFile))
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = null
+    exclude 'architectury.common.json'
 }
+
+assemble.dependsOn shadowJar
+
+shadow.addShadowVariantIntoJavaComponent = false
 
 // Fixed debug ports so the VS Code attach configs can find their instance
 // when launching via `--debug-jvm`; see .vscode/tasks.json.

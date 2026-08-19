@@ -4,18 +4,18 @@ architectury {
 
 dependencies {
     // We depend on Fabric Loader here to use the Fabric @Environment annotations,
-    // which get remapped to the correct annotations on each platform.
+    // which get transformed to the correct annotations on each platform.
     // Do NOT use other classes from Fabric Loader.
-    modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
+    implementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
     // NeoForge's config API to compile common code against; provided at runtime by
     // NeoForge itself and by Forge Config API Port on Fabric.
-    modApi "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.forge_config_api_port_version"
+    api "fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:$rootProject.forge_config_api_port_version"
 }
 
 // The public surface other mods compile against: the POI api package.
-// Classes are the unremapped dev output, so consumers use a plain
-// compileOnly on the api classifier.
+// Since 26.1 the game is unobfuscated, so there is only one namespace;
+// consumers use a plain compileOnly on the api classifier.
 def apiJar = tasks.register('apiJar', Jar) {
     from sourceSets.main.output
     include 'moe/qbyte/compass_plus/api/**'

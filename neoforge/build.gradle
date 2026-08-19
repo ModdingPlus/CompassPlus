@@ -34,7 +34,7 @@ repositories {
 dependencies {
     neoForge "net.neoforged:neoforge:$rootProject.neoforge_version"
 
-    common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
+    common(project(path: ':common')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionNeoForge')
 }
 
@@ -45,14 +45,24 @@ processResources {
     }
 }
 
-shadowJar {
-    configurations = [project.configurations.shadowBundle]
-    archiveClassifier = 'dev-shadow'
+// With no remapping the shadow jar IS the release jar: it merges this module's
+// classes with the transformed common classes under the unclassified name.
+jar {
+    archiveClassifier = 'raw'
 }
 
-remapJar {
-    inputFile.set shadowJar.archiveFile
+shadowJar {
+    dependsOn jar
+    mainSpec.sourcePaths.clear()
+    from(zipTree(jar.archiveFile))
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = null
+    exclude 'architectury.common.json'
 }
+
+assemble.dependsOn shadowJar
+
+shadow.addShadowVariantIntoJavaComponent = false
 
 // Fixed debug ports so the VS Code attach configs can find their instance
 // when launching via `--debug-jvm`; see .vscode/tasks.json.
